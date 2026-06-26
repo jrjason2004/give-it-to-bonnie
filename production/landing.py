@@ -403,8 +403,8 @@ input::placeholder{color:rgba(74,59,34,.4)}
       <div class=hero>
         <div class=titleTag><div>Give it to Bonnie</div></div>
         <div class=box>
-          <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🧸</span>Bonnie's opening her gift…</div>
-          <div class=loadwrap><div class=loadline id=loadline>Andy hands it to Bonnie…</div><div class=bar><div></div></div></div>
+          <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🎬</span>Putting your video together…</div>
+          <div class=loadwrap><div class=loadline id=loadline>Andy's heading over…</div><div class=bar><div></div></div></div>
         </div>
       </div>
     </div>
@@ -645,8 +645,17 @@ async function mockPay(){
     const j=await (await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:state.topic})})).json();
     clearInterval(li);
     if(!j.video){alert('Render failed: '+(j.error||'?'));show('free');return;}
-    showVideo(j.video, state.topic);
+    clearInterval(li); deliverVideo(j.video, state.topic);
   }catch(e){clearInterval(li);alert('Error: '+e);show('free');}
+}
+// after payment: show a rendering loading state, THEN reveal the rest of their video
+async function deliverVideo(url,topic){
+  closePlayer();
+  show('loading');
+  rotate($('loadline'),["Andy's lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie's door…","Rolling the camera…","Adding the finishing touches…"]);
+  await new Promise(r=>setTimeout(r,9000));   // render time (mockup delivers the saved render)
+  clearInterval(li);
+  showVideo(url,topic);
 }
 function showVideo(url,topic){
   $('heroVid').src=url+'?t='+Date.now(); $('dl').href=url;
@@ -662,7 +671,7 @@ async function handleReturn(){
     try{
       const j=await (await fetch('/api/paid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:q.get('jid'),sid:q.get('sid')})})).json();
       clearInterval(li);
-      if(j.video){ showVideo(j.video, j.topic); return; }
+      if(j.video){ deliverVideo(j.video, j.topic); return; }
       alert('Could not confirm payment: '+(j.error||'?'));
     }catch(e){ clearInterval(li); alert('Error: '+e); }
     show('idle');
@@ -688,7 +697,7 @@ async function mountExpress(){
       if(error){ alert(error.message||'Payment failed'); return; }
       if(paymentIntent && paymentIntent.status==='succeeded'){
         const j=await (await fetch('/api/paid_pi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid,pi:paymentIntent.id})})).json();
-        if(j.video){ closePlayer(); showVideo(j.video, j.topic); } else alert('Could not confirm payment: '+(j.error||'?'));
+        if(j.video){ deliverVideo(j.video, j.topic); } else alert('Could not confirm payment: '+(j.error||'?'));
       }
     });
   }catch(e){ /* leave the fallback button */ }

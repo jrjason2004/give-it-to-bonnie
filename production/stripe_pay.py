@@ -63,6 +63,7 @@ def create_session(jid, base_url):
         "line_items[0][price_data][unit_amount]": str(PRICE_CENTS),
         "line_items[0][price_data][product_data][name]": "Give It To Bonnie — the full video",
         "line_items[0][quantity]": "1",
+        "allow_promotion_codes": "true",            # show the "Add promotion code" field
         "success_url": f"{base_url}/?paid=1&jid={jid}&sid={{CHECKOUT_SESSION_ID}}",
         "cancel_url": f"{base_url}/?canceled=1",
         "metadata[jid]": jid,

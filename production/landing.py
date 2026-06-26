@@ -27,6 +27,7 @@ import gemini
 import intro as intro_mod
 import supa
 import stripe_pay
+import central
 
 ROOT = config.ROOT
 OUT = config.OUTPUT
@@ -192,6 +193,7 @@ def start_free(topic):
         JOBS[jid] = {"image": None, "err": None, "intro": None, "intro_err": None, "topic": topic}
     threading.Thread(target=_photo_job, args=(jid, meta["pile"]), daemon=True).start()
     threading.Thread(target=_intro_job, args=(jid, topic), daemon=True).start()
+    central.report_stat("increment_project_generations")       # a "give" succeeded
     return {"jid": jid, "letter": meta["letter"], "pile": meta["pile"], "teaser": meta.get("teaser", "")}
 
 
@@ -679,7 +681,9 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
-        if u.path == "/": self._send(200, PAGE, "text/html"); return
+        if u.path == "/":
+            central.report_stat("increment_project_views")     # one view per homepage load
+            self._send(200, PAGE, "text/html"); return
         if u.path == "/api/photo":
             jid = urllib.parse.parse_qs(u.query).get("id", [""])[0]
             j = JOBS.get(jid) or {}

@@ -289,6 +289,9 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .inrow input{flex:1;min-width:0;border:none;outline:none;background:transparent;font-family:'Nunito',sans-serif;font-weight:700;font-size:16px;color:#4a3b22}
 .give{border:none;border-radius:10px;background:#FFC42E;color:#3a2a00;font-family:'Fredoka',sans-serif;font-weight:600;font-size:16px;padding:13px 18px;cursor:pointer}
 .freenote{text-align:center;font-family:'Nunito',sans-serif;font-size:11.5px;color:rgba(255,233,199,.85);margin-top:11px}
+.agree{display:flex;align-items:flex-start;gap:8px;margin-top:13px;font-family:'Nunito',sans-serif;font-size:12.5px;line-height:1.35;color:#ffe9c7;cursor:pointer}
+.agree input{margin-top:1px;width:16px;height:16px;accent-color:#FFC42E;flex:0 0 auto;cursor:pointer}
+.agree a{color:#fff;font-weight:700;text-decoration:underline}
 /* community wall — polaroids of what others just gave Bonnie (full-bleed, runs off the page) */
 .wall{width:100vw;margin:30px 0 0}
 .wallttl{font-family:'Fredoka',sans-serif;font-weight:500;color:#fff6e6;text-align:center;font-size:14px;letter-spacing:.3px;margin-bottom:12px;text-shadow:0 1px 2px rgba(0,0,0,.25)}
@@ -380,6 +383,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
         <div class=box>
           <div class=boxlbl>What's your name?</div>
           <div class=inrow><input id=nameInput placeholder="your first name…" autocomplete=off><button class=give onclick=nameGo()>Done</button></div>
+          <label class=agree><input type=checkbox id=agree> I agree to the <a href="https://jasonstacks.com/terms" target=_blank rel=noopener>terms</a> and <a href="https://jasonstacks.com/privacy" target=_blank rel=noopener>privacy policy</a></label>
         </div>
       </div>
     </div>
@@ -555,9 +559,10 @@ function give(){
     return j.letter;
   })();
   genJob.catch(()=>{});
-  $('nameInput').value=''; show('name'); setTimeout(()=>$('nameInput').focus(),60);
+  $('nameInput').value=''; $('agree').checked=false; show('name'); setTimeout(()=>$('nameInput').focus(),60);
 }
 async function nameGo(){
+  if(!$('agree').checked){ alert('Please agree to the terms and privacy policy to continue.'); return; }
   let letter;
   try{ letter=await genJob; }                // almost always already resolved -> instant
   catch(e){ alert('Hmm: '+(e.message||e)); show('idle'); return; }

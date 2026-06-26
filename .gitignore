@@ -1,5 +1,6 @@
 # secrets — never commit
 .env
+*.env
 production/.env
 
 # generated output (photos, intro clips, wall.json)

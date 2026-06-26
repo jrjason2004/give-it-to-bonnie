@@ -30,6 +30,7 @@ import stripe_pay
 
 ROOT = config.ROOT
 OUT = config.OUTPUT
+OUT.mkdir(parents=True, exist_ok=True)     # gitignored, so it won't exist in a fresh container
 PORT = int(os.environ.get("PORT", 8095))   # Render injects $PORT
 HOST = os.environ.get("HOST", "127.0.0.1")  # set HOST=0.0.0.0 in prod (done in Dockerfile)
 # public base for Stripe success/cancel redirects (set BASE_URL in prod to the real https domain)
@@ -45,10 +46,15 @@ JOBS = {}
 _lock = threading.Lock()
 
 _FREE_SCHEMA = {"type": "object", "required": ["pile", "letter"], "properties": {
-    "pile": {"type": "string", "description": "what Bonnie is cradling in the photo — the action-figure "
-             "toy of the topic's central character PLUS one or two of the topic's items, named "
-             "specifically with brands (e.g. 'a Lamar Jackson action figure, a Speed Stacks cup, and "
-             "a Stackmat timer')"},
+    "pile": {"type": "string", "description": "what Bonnie is cradling in the photo — one or two of the "
+             "topic's real items, named specifically with brands, optionally plus an action figure of a "
+             "REAL public figure central to the topic (e.g. 'a Lamar Jackson action figure, a Speed Stacks "
+             "cup, and a Stackmat timer'). HARD RULE: NEVER include any Disney- or Pixar-owned or other "
+             "copyrighted character, toy, or franchise — no Buzz Lightyear, Woody, Jessie, Toy Story, "
+             "Mickey, Marvel, Star Wars, Pokémon, Nintendo characters, etc. They get the image rejected. "
+             "If the topic's central character is fictional/copyrighted, DROP the action figure entirely "
+             "and use only real brand-name objects (e.g. for 'my childhood': 'a vintage 1994 Fruit of the "
+             "Loom tee shirt, and a Sharpie marker')."},
     "letter": {"type": "string", "description": "The COMPLETE handwritten letter from Bonnie, with real "
                "line breaks (\\n). Format EXACTLY like the examples:\n"
                "Line 1: 'Dear friend,'\n"
@@ -105,8 +111,9 @@ def bonnie_letter(topic):
     meta = gemini.generate_json(
         LETTER_MODEL,
         f'A grown-up just gave you (Bonnie) this thing they are letting go of: "{topic}". Decide the pile '
-        f'of toys you\'re now cradling (the action figure of the topic\'s central character + one or two '
-        f'topic items, brand-named, for the PHOTO only), and write your letter back to them.',
+        f'you\'re now cradling (one or two real brand-named topic items, optionally plus an action figure '
+        f'of a REAL public figure central to the topic — NEVER a Disney/Pixar or copyrighted character — '
+        f'for the PHOTO only), and write your letter back to them.',
         _FREE_SCHEMA, system=(
             "You are Bonnie — the sweet little girl from Toy Story. Write a real kid's letter.\n"
             "VOICE (this is everything):\n"
@@ -127,9 +134,30 @@ def bonnie_letter(topic):
             'Ex (my gym bag): "You said it still had the tag on it from 2022. ... It has a really good '
             'zipper. I think it was always supposed to be mine. (P.S. Mr. Pricklepants fit inside '
             'perfectly.)"\n'
-            "The PILE is just for the photo — hyper-specific and brand-named there only."), thinking=False)
+            "The PILE is just for the photo — hyper-specific and brand-named there only. NEVER put any "
+            "Disney/Pixar or copyrighted character or toy in the pile (no Buzz Lightyear, Woody, Toy "
+            "Story, etc.) — it gets the image rejected; use real brand-name objects only."), thinking=False)
     meta["letter"] = _format_letter(meta["letter"])
+    meta["pile"] = _clean_pile(meta["pile"])
     return meta
+
+
+# image gen rejects these IP-protected names; strip any that slip into the pile, as a backstop.
+_BANNED = ["buzz lightyear", "woody", "jessie", "rex", "hamm", "slinky", "mr. potato head",
+           "mrs. potato head", "bullseye", "lotso", "forky", "toy story", "mickey", "minnie",
+           "disney", "pixar", "marvel", "spider-man", "iron man", "star wars", "darth vader",
+           "yoda", "baby yoda", "grogu", "pokémon", "pokemon", "pikachu", "mario", "luigi",
+           "zelda", "link", "sonic", "elsa", "frozen", "lightning mcqueen"]
+
+
+def _clean_pile(pile):
+    """Backstop: drop any comma-separated item that names an IP-protected character/franchise."""
+    parts = [p.strip() for p in re.split(r",| and ", pile) if p.strip()]
+    kept = [p for p in parts if not any(b in p.lower() for b in _BANNED)]
+    kept = kept or parts[-1:]                     # never return empty
+    if len(kept) == 1:
+        return kept[0]
+    return ", ".join(kept[:-1]) + ", and " + kept[-1]
 
 
 def bonnie_photo(pile):
@@ -139,9 +167,9 @@ def bonnie_photo(pile):
     inputs = [str(config.ASSETS / ref)] if ref else []
     out = OUT / f"{sid}.jpg"
     prompt = f"Replace the cowboy toy with {pile}. Sharpen animation quality. Keep everything else the same."
-    # 512 + no high-thinking (grounding kept for brand accuracy) -> ~8s instead of ~33s
+    # 512 + no high-thinking (grounding kept for brand accuracy) -> ~8s instead of ~33s; 1:1 polaroid
     gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, str(out), grounding=True,
-                          thinking_high=False, image_size="512")
+                          thinking_high=False, image_size="512", aspect="1:1")
     return "output/" + out.name
 
 
@@ -181,7 +209,7 @@ def wall_add(jid, name):
     else the local JSON store)."""
     j = JOBS.get(jid) or {}
     img, topic = j.get("image"), j.get("topic")
-    name = (name or "").strip()[:24]
+    name = (name or "").strip()[:24].title()      # always capitalize names
     if not (img and topic and name):
         return
     item = _short_item(topic)
@@ -413,6 +441,8 @@ async function renderWall(){
   document.getElementById('wallrow').innerHTML=liveHTML.concat(seedHTML).join('');   // real entries first
 }
 window.addEventListener('DOMContentLoaded',renderWall);
+// keep the gallery live: refresh every 20s while the home screen is showing
+setInterval(()=>{ if(!document.getElementById('idle').classList.contains('hidden')) renderWall(); },20000);
 let state={topic:'',letter:'',jid:'',name:'',recorded:false};
 let genJob=null;        // promise resolving to the letter text (runs while they type their name)
 let runId=0;            // bumped on each give()/reset to abort a stale streaming-letter loop
@@ -520,7 +550,8 @@ async function nameGo(){
   let letter;
   try{ letter=await genJob; }                // almost always already resolved -> instant
   catch(e){ alert('Hmm: '+(e.message||e)); show('idle'); return; }
-  const name=($('nameInput').value.trim()||'friend');
+  const raw=($('nameInput').value.trim()||'friend');
+  const name=raw.replace(/\b\w/g,c=>c.toUpperCase());   // capitalize each word of the name
   state.name=name;
   const named=letter.replace(/^Dear[^\n]*?,/, 'Dear '+name+',');   // swap the real name in
   state.letter=named;
@@ -656,8 +687,46 @@ class H(BaseHTTPRequestHandler):
         if str(f).startswith(str(ROOT.resolve())) and f.is_file():
             ct = {".mp4": "video/mp4", ".jpg": "image/jpeg", ".png": "image/png",
                   ".wav": "audio/wav", ".mp3": "audio/mpeg"}.get(f.suffix.lower(), "application/octet-stream")
-            self._send(200, f.read_bytes(), ct); return
+            self._serve_file(f, ct); return
         self._send(404, json.dumps({"error": "not found"}))
+
+    def _serve_file(self, f, ct):
+        """Stream a file in chunks with HTTP Range support (required for video playback in Safari/iOS,
+        and keeps memory low — never loads the whole file)."""
+        size = f.stat().st_size
+        rng = self.headers.get("Range", "")
+        start, end = 0, size - 1
+        partial = False
+        if rng.startswith("bytes="):
+            try:
+                s, e = rng[6:].split("-", 1)
+                start = int(s) if s else 0
+                end = int(e) if e else size - 1
+                end = min(end, size - 1)
+                if start <= end:
+                    partial = True
+            except Exception:
+                partial = False
+        length = end - start + 1
+        try:
+            self.send_response(206 if partial else 200)
+            self.send_header("Content-Type", ct)
+            self.send_header("Accept-Ranges", "bytes")
+            self.send_header("Content-Length", str(length))
+            if partial:
+                self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+            self.end_headers()
+            with open(f, "rb") as fh:
+                fh.seek(start)
+                remaining = length
+                while remaining > 0:
+                    chunk = fh.read(min(262144, remaining))
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    remaining -= len(chunk)
+        except (BrokenPipeError, ConnectionResetError):
+            pass   # client seeked/closed — normal for video
 
     def do_POST(self):
         n = int(self.headers.get("Content-Length", 0))

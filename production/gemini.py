@@ -62,16 +62,18 @@ def generate_json(model: str, prompt: str, schema: dict, system: str = "", think
 
 
 def generate_image(model: str, prompt: str, input_paths: list[str], out_path: str,
-                   grounding=True, thinking_high=True, image_size: str | None = None) -> str:
+                   grounding=True, thinking_high=True, image_size: str | None = None,
+                   aspect: str = "16:9") -> str:
     """Nano Banana 2 image edit/gen. Feeds reference images + prompt, saves the result.
-    image_size (e.g. "512", "1K", "2K") lowers resolution for a faster render when set."""
+    image_size (e.g. "512", "1K", "2K") lowers resolution for a faster render when set.
+    aspect sets the output aspect ratio (e.g. "16:9", "1:1")."""
     parts = []
     for p in input_paths:
         data = base64.standard_b64encode(Path(p).read_bytes()).decode()
         mime = "image/png" if str(p).lower().endswith(".png") else "image/jpeg"
         parts.append({"inlineData": {"mimeType": mime, "data": data}})
     parts.append({"text": prompt})
-    img_cfg = {"aspectRatio": "16:9"}
+    img_cfg = {"aspectRatio": aspect}
     if image_size:
         img_cfg["imageSize"] = image_size
     gc = {"responseModalities": ["IMAGE"], "imageConfig": img_cfg}

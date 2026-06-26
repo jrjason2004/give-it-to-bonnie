@@ -313,14 +313,14 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .polcap .wn{font-weight:700}
 .polcap .wi{font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;color:#23282f}
 .poltime{font-family:'Nunito',sans-serif;font-size:10px;color:#a89a82;text-align:center;padding:1px 0 9px}
-.panel{position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,rgba(122,76,34,.9),rgba(74,46,20,.97));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;overflow:auto}
+.panel{position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,rgba(122,76,34,.9),rgba(74,46,20,.97));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;overflow-x:hidden;overflow-y:auto}
 /* free deliverable: a 3-card stack (letter · photo · video). Swipe sends the front card to the back;
    the cards behind peek out to the side (even off the screen edge). */
 #free{justify-content:flex-start}
 .fInner{margin:auto 0;width:100%;max-width:430px;display:flex;flex-direction:column;align-items:center}
 .deck{position:relative;width:100%;height:0;transition:height .45s ease}
 .ocard{position:absolute;top:0;left:50%;width:100%;transform:translateX(-50%);transform-origin:center top;transition:transform .5s cubic-bezier(.2,.85,.25,1),opacity .4s;cursor:pointer;backface-visibility:hidden}
-.letter{position:relative;width:100%;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:repeating-linear-gradient(#fffef9,#fffef9 31px,#e7d9c4 32px);background-color:#fffef9;border-radius:8px;padding:30px 22px 24px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.letter{position:relative;width:100%;background:repeating-linear-gradient(#fffef9,#fffef9 31px,#e7d9c4 32px);background-color:#fffef9;border-radius:8px;padding:30px 22px 24px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
 .letter::-webkit-scrollbar{width:0}
 .letter p{font-family:'Caveat',cursive;font-size:23px;line-height:32px;color:#2c3a66;margin:0;white-space:pre-line}
 .polaroid{background:#fffdf8;padding:10px 10px 0;border-radius:4px;box-shadow:0 18px 46px rgba(0,0,0,.5);width:100%;max-width:280px;margin:0 auto}
@@ -510,12 +510,18 @@ const CARDS=['letterCard','photoCard','videoCard'];
 let photoReady=false, typingDone=false, revealed=false;
 let stack=[0,1,2];   // front first
 function setDeckHeight(){ $('deck').style.height=$(CARDS[stack[0]]).offsetHeight+'px'; }
+function capLetter(){   // letter shows in full when it's the front card; clipped when tucked behind
+  const lp=$('letterCard').firstElementChild, front=(!revealed)||(stack[0]===0);
+  lp.style.maxHeight=front?'none':'300px';
+  lp.style.overflow=front?'visible':'hidden';
+}
 function layout(){
+  capLetter();
   if(!revealed){   // typing: only the letter, in front
     CARDS.forEach((id,i)=>{ const el=$(id), f=(i===0);
       el.style.zIndex=f?3:1; el.style.opacity=f?1:0; el.style.pointerEvents=f?'auto':'none';
       el.style.transform=f?'translateX(-50%) rotate(-2deg)':'translateX(-50%) rotate(-2deg) scale(.9)'; });
-  } else {         // stacked: front centered, others peek out to the right (can run off-screen)
+  } else {         // stacked: front centered, others peek out to the right (clipped at the screen edge)
     stack.forEach((ci,p)=>{ const el=$(CARDS[ci]);
       el.style.zIndex=3-p; el.style.opacity=1; el.style.pointerEvents='auto';
       const tx=p*36, rot=-2+p*6, sc=1-p*0.07;
@@ -552,7 +558,7 @@ function typeLetter(named){
   (function step(){
     if(mine!==runId) return;
     if(i>=named.length){ typingDone=true; $('freeActions').classList.remove('hidden'); setDeckHeight(); tryReveal(); return; }
-    $('letterTxt').textContent+=named[i++]; const lp=$('letterCard').firstElementChild; lp.scrollTop=lp.scrollHeight; setDeckHeight();
+    $('letterTxt').textContent+=named[i++]; setDeckHeight(); $('letterCard').scrollIntoView({block:'end'});
     const c=named[i-1]; const d=(c==='.'||c==='!'||c==='?')?240:(c==='\n')?150:(c===','?110:32);
     setTimeout(step,d);
   })();

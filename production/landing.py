@@ -275,9 +275,10 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .sun{position:absolute;top:6vh;right:-6vw;width:min(360px,46vw);height:min(360px,46vw);border-radius:50%;
      background:radial-gradient(circle,#fff7cc,#ffe89a 42%,rgba(255,232,154,0) 72%);animation:pulseGlow 6s ease-in-out infinite}
 .grass{position:fixed;left:0;right:0;bottom:0;height:calc(24vh + env(safe-area-inset-bottom));background:linear-gradient(180deg,#a6d662,#80bd45 42%,#6aa636);z-index:0}
-.stage{position:relative;z-index:2;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;
-       gap:18px;padding:max(24px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom))}
-.col{width:100%;max-width:480px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.stage{position:relative;z-index:2;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+       padding:0 0 max(10px,env(safe-area-inset-bottom))}
+.col{width:100%;display:flex;flex-direction:column;align-items:center}
+.hero{width:100%;max-width:480px;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 18px}
 .titleTag{background:linear-gradient(180deg,#c98a4e,#a86b34);border:3px solid #8a5526;border-radius:16px;padding:12px 26px;box-shadow:0 8px 20px rgba(0,0,0,.32);transform:rotate(-1deg)}
 .titleTag div{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(26px,7vw,34px);color:#fff6e6;text-shadow:0 2px 0 rgba(0,0,0,.28)}
 .box{position:relative;width:100%;max-width:460px;background:linear-gradient(180deg,#a86b34,#8a5526);border:1px solid #6f441e;border-top:6px solid #c98a4e;border-radius:26px;padding:22px 24px 26px;box-shadow:0 24px 60px rgba(0,0,0,.32)}
@@ -301,15 +302,19 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .polcap .wi{font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;color:#23282f}
 .poltime{font-family:'Nunito',sans-serif;font-size:10px;color:#a89a82;text-align:center;padding:1px 0 9px}
 .panel{position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,rgba(122,76,34,.9),rgba(74,46,20,.97));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;overflow:auto}
-/* free deliverable: one vertical letter; the photo + video sit in the MIDDLE of it */
+/* free deliverable: the full letter, with a photo↔video deck overlaying its MIDDLE (no displacement) */
 #free{justify-content:flex-start}
 .fInner{margin:auto 0;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center}
+.letterWrap{position:relative;width:100%}
 .letter{position:relative;width:100%;background:repeating-linear-gradient(#fffef9,#fffef9 31px,#e7d9c4 32px);background-color:#fffef9;border-radius:8px;padding:30px 22px 24px;box-shadow:0 14px 40px rgba(0,0,0,.35);animation:popIn .5s cubic-bezier(.18,.9,.32,1.4)}
 .letter p{font-family:'Caveat',cursive;font-size:23px;line-height:32px;color:#2c3a66;margin:0;white-space:pre-line}
-.mid{margin:20px 0;display:flex;flex-direction:column;align-items:center;gap:16px;animation:popIn .5s cubic-bezier(.18,.9,.32,1.4)}
-.polaroid{background:#fffdf8;padding:10px 10px 0;border-radius:4px;box-shadow:0 16px 40px rgba(0,0,0,.42);width:100%;max-width:270px;transform:rotate(-2deg)}
+.deck{position:absolute;left:0;right:0;top:50%;height:0;z-index:5}
+.ocard{position:absolute;left:50%;top:0;width:min(84%,280px);transform:translate(-50%,-50%);transition:transform .5s cubic-bezier(.2,.85,.25,1),opacity .4s;cursor:pointer;opacity:0}
+.polaroid{background:#fffdf8;padding:10px 10px 0;border-radius:4px;box-shadow:0 18px 46px rgba(0,0,0,.5);width:100%}
 .polaroid img{width:100%;display:block;border-radius:2px;aspect-ratio:1/1;object-fit:cover;background:#e8e2d4}
 .polaroid .pcap{font-family:'Caveat',cursive;font-size:18px;color:#4a3b22;text-align:center;padding:8px 4px 10px}
+.scrollhint{font-family:'Fredoka',sans-serif;font-weight:500;font-size:12.5px;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.35);margin-top:4px;animation:bob 1.7s ease-in-out infinite}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
 .buy{width:100%;max-width:430px;margin-top:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border:none;border-radius:15px;background:#FFC42E;color:#3a2a00;font-family:'Fredoka',sans-serif;font-weight:600;text-align:left;padding:12px 12px 12px 18px;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.2)}
 .price{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:#fffdf8;color:#c0392b;border-radius:50%;font-family:'Fredoka',sans-serif;font-weight:700;font-size:18px;box-shadow:0 3px 0 rgba(0,0,0,.18);transform:rotate(-8deg);animation:wobble 2.6s ease-in-out infinite}
 .ghost{margin-top:10px;border:0;background:transparent;color:rgba(255,246,230,.85);font-family:'Fredoka',sans-serif;font-weight:600;font-size:14px;cursor:pointer}
@@ -326,23 +331,26 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .playbtn{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px rgba(0,0,0,.45);animation:pulseGlow 2.4s ease-in-out infinite}
 .playbtn svg{width:26px;height:26px;margin-left:3px;fill:#171b27;display:block}
 .vtitle{font-family:'Fredoka',sans-serif;font-weight:600;font-size:18px;color:#fff;text-align:center;padding:11px 6px 5px}
-/* immersive fullscreen player */
-#player{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center}
-#introVid{width:100%;height:100%;object-fit:contain;background:#000}
-.pclose{position:absolute;top:max(14px,env(safe-area-inset-top));right:16px;z-index:3;width:38px;height:38px;border-radius:50%;border:none;background:rgba(0,0,0,.5);color:#fff;font-size:17px;cursor:pointer}
-.pfull{position:absolute;bottom:max(16px,env(safe-area-inset-bottom));right:16px;z-index:3;width:40px;height:40px;border-radius:9px;border:none;background:rgba(0,0,0,.5);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.pfull svg{width:20px;height:20px;fill:#fff}
-#payGate{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.9));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+/* immersive player — controls sit OVER the video; fullscreen is a CSS rotate (not native) so the
+   "want to see the rest" paywall can still overlay */
+#player{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.vidbox{position:relative;width:100%;max-height:100%;aspect-ratio:16/9}
+#introVid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block}
+.pclose{position:absolute;top:8px;right:8px;z-index:4;width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:16px;cursor:pointer}
+.pfull{position:absolute;bottom:8px;right:8px;z-index:4;width:38px;height:38px;border-radius:9px;border:none;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pfull svg{width:19px;height:19px;fill:#fff}
+#player.land{width:100vh;height:100vw;transform-origin:top left;transform:translateX(100vw) rotate(90deg)}
+#payGate{position:absolute;inset:0;z-index:5;background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.92));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
 .pgttl{font-family:'Fredoka',sans-serif;font-weight:600;color:#fff;font-size:clamp(22px,6vw,28px);margin-bottom:8px}
 .pgsub{font-family:'Nunito',sans-serif;color:rgba(255,255,255,.82);font-size:14px;max-width:340px;line-height:1.45;margin-bottom:22px}
 .loadwrap{width:100%;max-width:430px;background:rgba(255,250,242,.96);border-radius:14px;padding:18px;box-shadow:inset 0 2px 6px rgba(0,0,0,.16)}
 .loadline{font-family:'Fredoka',sans-serif;font-weight:500;color:#4a3b22;font-size:18px;line-height:1.3;min-height:56px;display:flex;align-items:center}
 .bar{margin-top:6px;height:8px;background:rgba(138,85,38,.22);border-radius:6px;overflow:hidden;position:relative}
 .bar>div{position:absolute;top:0;bottom:0;width:42%;background:#FFC42E;border-radius:6px;animation:loadbar 1.4s ease-in-out infinite}
-.foot{position:relative;z-index:3;width:100%;text-align:center;padding:18px 0 max(14px,env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:rgba(255,255,255,.7)}
-.foot a{color:rgba(255,255,255,.92);font-weight:800;text-decoration:none}
-.idlefoot{color:rgba(74,59,34,.6)}
-.idlefoot a{color:#4a3b22}
+.foot{position:relative;z-index:3;width:100%;text-align:center;padding:18px 0 max(14px,env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:#fff}
+.foot a{color:#fff;font-weight:800;text-decoration:none}
+.idlefoot{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.idlefoot a{color:#fff}
 .hidden{display:none!important}
 </style></head><body>
 <div class=app>
@@ -350,10 +358,13 @@ input::placeholder{color:rgba(74,59,34,.4)}
   <div class=stage>
     <!-- IDLE -->
     <div class=col id=idle>
-      <div class=titleTag><div>Give it to Bonnie</div></div>
-      <div class=box>
-        <div class=boxlbl><span style="font-size:19px">🧸</span>Type something you're ready to let go of</div>
-        <div class=inrow><input id=topic placeholder="anything at all…" autocomplete=off><button class=give onclick=give()>Give</button></div>
+      <div class=hero>
+        <div class=titleTag><div>Give it to Bonnie</div></div>
+        <div class=box>
+          <div class=boxlbl><span style="font-size:19px">🧸</span>Type something you're ready to let go of</div>
+          <div class=inrow><input id=topic placeholder="anything at all…" autocomplete=off><button class=give onclick=give()>Give</button></div>
+        </div>
+        <div class=scrollhint>↓ what others gave Bonnie</div>
       </div>
       <div class=wall>
         <div class=wallrow id=wallrow></div>
@@ -362,38 +373,43 @@ input::placeholder{color:rgba(74,59,34,.4)}
     </div>
     <!-- NAME (generation already running in the background while they type) -->
     <div class="col hidden" id=name>
-      <div class=titleTag><div>Give it to Bonnie</div></div>
-      <div class=box>
-        <div class=boxlbl>What's your name?</div>
-        <div class=inrow><input id=nameInput placeholder="your first name…" autocomplete=off><button class=give onclick=nameGo()>Done</button></div>
+      <div class=hero>
+        <div class=titleTag><div>Give it to Bonnie</div></div>
+        <div class=box>
+          <div class=boxlbl>What's your name?</div>
+          <div class=inrow><input id=nameInput placeholder="your first name…" autocomplete=off><button class=give onclick=nameGo()>Done</button></div>
+        </div>
       </div>
     </div>
     <!-- LOADING (only used by the $5 video step) -->
     <div class="col hidden" id=loading>
-      <div class=titleTag><div>Give it to Bonnie</div></div>
-      <div class=box>
-        <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🧸</span>Bonnie's opening her gift…</div>
-        <div class=loadwrap><div class=loadline id=loadline>Andy hands it to Bonnie…</div><div class=bar><div></div></div></div>
+      <div class=hero>
+        <div class=titleTag><div>Give it to Bonnie</div></div>
+        <div class=box>
+          <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🧸</span>Bonnie's opening her gift…</div>
+          <div class=loadwrap><div class=loadline id=loadline>Andy hands it to Bonnie…</div><div class=bar><div></div></div></div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- FREE: one vertical letter; the photo + video sit in the middle -->
+  <!-- FREE: the full letter; the photo↔video deck overlays its middle -->
   <div id=free class="panel hidden">
     <div class=fInner>
-      <div class=letter>
-        <p id=letterTop></p>
-        <div id=mid class="mid hidden">
-          <div class=polaroid><img id=photo alt=""><div class=pcap></div></div>
-          <div class=filecard onclick=openPlayer()>
-            <div class=fileframe>
-              <img class=fileposter src="assets/intro_poster.jpg" alt="">
-              <div class=playbtn><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+      <div class=letterWrap>
+        <div class=letter><p id=letterTxt></p></div>
+        <div id=deck class="deck hidden">
+          <div class="ocard photoCard" id=photoCard><div class=polaroid><img id=photo alt=""><div class=pcap></div></div></div>
+          <div class="ocard videoCard" id=videoCard onclick=videoTap()>
+            <div class=filecard>
+              <div class=fileframe>
+                <img class=fileposter src="assets/intro_poster.jpg" alt="">
+                <div class=playbtn><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
+              </div>
+              <div class=vtitle>Watch Andy drop it off</div>
             </div>
-            <div class=vtitle>Watch Andy drop it off</div>
           </div>
         </div>
-        <p id=letterBot></p>
       </div>
       <div id=freeActions class=hidden style="width:100%;display:flex;flex-direction:column;align-items:center">
         <button class=ghost onclick=reset()>↻ Give something else</button>
@@ -404,9 +420,11 @@ input::placeholder{color:rgba(74,59,34,.4)}
 
   <!-- IMMERSIVE PLAYER: plays the free intro, then paywalls to continue -->
   <div id=player class=hidden>
-    <video id=introVid playsinline></video>
-    <button class=pclose onclick=closePlayer()>✕</button>
-    <button class=pfull onclick=goFull() aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
+    <div class=vidbox>
+      <video id=introVid playsinline webkit-playsinline></video>
+      <button class=pclose onclick=closePlayer()>✕</button>
+      <button class=pfull onclick=goFull() aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
+    </div>
     <div id=payGate class=hidden>
       <div class=pgttl>Want to see the rest?</div>
       <div class=pgsub id=pgsub>Andy carries it across the yard, knocks, and hands Bonnie your toy — building to the pull-string moment.</div>
@@ -472,44 +490,52 @@ $('topic').addEventListener('keydown',e=>{if(e.key==='Enter')give();});
 $('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')nameGo();});
 let li=null;
 function rotate(el,lines){let i=0;el.textContent=lines[0];clearInterval(li);li=setInterval(()=>{i=(i+1)%lines.length;el.textContent=lines[i];},1500);}
-// ---- one vertical letter; the photo + video reveal in the MIDDLE ----
-let photoReady=false, typingDone=false;
-function splitLetter(named){            // split into a top and bottom half at a line boundary
-  const lines=named.split('\n');
-  const mid=Math.max(1,Math.round(lines.length/2));
-  return [lines.slice(0,mid).join('\n'), lines.slice(mid).join('\n')];
+// ---- the letter types in full; a photo↔video deck OVERLAYS its middle (doesn't displace text) ----
+let photoReady=false, typingDone=false, deckFront=0, deckShown=false;
+function layoutDeck(){
+  [['photoCard',0],['videoCard',1]].forEach(([id,i])=>{
+    const el=$(id), front=(i===deckFront);
+    el.style.zIndex=front?3:2;
+    el.style.opacity=deckShown?1:0;
+    el.style.pointerEvents=deckShown?'auto':'none';
+    const rot=front?-2:5, tx=front?0:22, sc=front?1:0.9;
+    el.style.transform=`translate(calc(-50% + ${tx}px),-50%) rotate(${rot}deg) scale(${sc})`;
+  });
 }
-function typeInto(el,txt,mine,onDone){  // type with natural pauses; scroll follows the typing
+function deckTo(f){ deckFront=(f+2)%2; layoutDeck(); }
+function videoTap(){ if(deckFront!==1){ deckTo(1); return; } openPlayer(); }
+function tryReveal(){
+  if(deckShown || !photoReady || !typingDone) return;
+  deckShown=true; $('deck').classList.remove('hidden'); layoutDeck();
+  $('deck').scrollIntoView({block:'center'}); pollIntro();   // bring the overlay into view + pre-warm
+}
+(function deckSwipe(){ const el=$('deck'); let x0=null,y0=null,lock=null;
+  el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;lock=null;},{passive:true});
+  el.addEventListener('touchmove',e=>{ if(x0==null)return; const dx=e.touches[0].clientX-x0,dy=e.touches[0].clientY-y0;
+    if(lock==null&&(Math.abs(dx)>6||Math.abs(dy)>6)) lock=Math.abs(dx)>Math.abs(dy)?'x':'y'; },{passive:true});
+  el.addEventListener('touchend',e=>{ if(x0==null)return; const dx=e.changedTouches[0].clientX-x0; if(lock==='x'&&Math.abs(dx)>40) deckTo(deckFront+(dx<0?1:-1)); x0=null; });
+  let mx=null; el.addEventListener('mousedown',e=>mx=e.clientX);
+  el.addEventListener('mouseup',e=>{ if(mx==null)return; const dx=e.clientX-mx; if(Math.abs(dx)>40) deckTo(deckFront+(dx<0?1:-1)); mx=null; });
+  $('photoCard').addEventListener('click',()=>{ if(deckFront!==0) deckTo(0); });
+})();
+function typeLetter(named){
+  const mine=runId;
+  $('letterTxt').textContent=''; typingDone=false; deckShown=false; deckFront=0;
+  $('deck').classList.add('hidden'); layoutDeck(); $('freeActions').classList.add('hidden');
   let i=0;
   (function step(){
     if(mine!==runId) return;
-    if(i>=txt.length){ onDone&&onDone(); return; }
-    el.textContent+=txt[i++]; el.scrollIntoView({block:'end'});
-    const c=txt[i-1]; const d=(c==='.'||c==='!'||c==='?')?240:(c==='\n')?150:(c===','?110:32);
+    if(i>=named.length){ typingDone=true; $('freeActions').classList.remove('hidden'); tryReveal(); return; }
+    $('letterTxt').textContent+=named[i++]; $('letterTxt').scrollIntoView({block:'end'});
+    const c=named[i-1]; const d=(c==='.'||c==='!'||c==='?')?240:(c==='\n')?150:(c===','?110:32);
     setTimeout(step,d);
   })();
-}
-function typeLetter(named){
-  const mine=runId;
-  $('letterTop').textContent=''; $('letterBot').textContent='';
-  $('mid').classList.add('hidden'); typingDone=false;
-  $('freeActions').classList.add('hidden');
-  const parts=splitLetter(named);
-  typeInto($('letterTop'),parts[0],mine,()=>{
-    if(mine!==runId) return;
-    $('mid').classList.remove('hidden');           // photo + video appear in the middle of the letter
-    $('mid').scrollIntoView({block:'center'});
-    typeInto($('letterBot'),parts[1],mine,()=>{
-      if(mine!==runId) return;
-      typingDone=true; $('freeActions').classList.remove('hidden'); pollIntro();
-    });
-  });
 }
 async function pollPhoto(jid){
   for(let i=0;i<150;i++){
     try{
       const p=await (await fetch('/api/photo?id='+jid)).json();
-      if(p.image){ $('photo').src=p.image+'?t='+Date.now(); photoReady=true; recordWall(); return; }
+      if(p.image){ $('photo').src=p.image+'?t='+Date.now(); photoReady=true; recordWall(); tryReveal(); return; }
       if(p.err){ console.warn('photo:',p.err); return; }
     }catch(e){}
     await new Promise(r=>setTimeout(r,1000));
@@ -518,8 +544,8 @@ async function pollPhoto(jid){
 function give(){
   const t=$('topic').value.trim(); if(!t)return; state.topic=t; state.name=''; state.recorded=false;
   // reset, then kick generation immediately — letter + photo + intro run while they type their name
-  runId++; introUrl=''; photoReady=false; typingDone=false;
-  $('photo').src=''; $('letterTop').textContent=''; $('letterBot').textContent=''; $('mid').classList.add('hidden');
+  runId++; introUrl=''; photoReady=false; typingDone=false; deckShown=false; deckFront=0;
+  $('photo').src=''; $('letterTxt').textContent=''; $('deck').classList.add('hidden');
   genJob=(async()=>{
     const j=await (await fetch('/api/free',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:t})})).json();
     if(j.error||!j.letter) throw new Error(j.error||'no letter');
@@ -564,17 +590,13 @@ async function openPlayer(){          // open immersive, play the FREE intro cli
   v.src=url+'?t='+Date.now(); v.currentTime=0; v.muted=false;
   v.play().catch(()=>{ v.muted=true; v.play().catch(()=>{}); });
 }
-function goFull(){                    // fullscreen the video (iOS rotates to landscape)
-  const v=$('introVid');
-  if(v.webkitEnterFullscreen){ v.webkitEnterFullscreen(); return; }
-  const el=$('player'); (el.requestFullscreen||el.webkitRequestFullscreen||function(){}).call(el);
-}
+function goFull(){ $('player').classList.toggle('land'); }   // CSS-rotate landscape (overlays still work)
 function recordWall(){   // add this finished generation to the live gallery (once)
   if(state.recorded||!state.jid||!state.name) return; state.recorded=true;
   fetch('/api/wall_add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid,name:state.name})}).catch(()=>{});
 }
 function replayIntro(){ $('payGate').classList.add('hidden'); const v=$('introVid'); v.currentTime=0; v.play().catch(()=>{}); }
-function closePlayer(){ const v=$('introVid'); v.pause(); $('player').classList.add('hidden'); }
+function closePlayer(){ const v=$('introVid'); v.pause(); $('player').classList.add('hidden'); $('player').classList.remove('land'); }
 async function pay(){
   $('introVid').pause();
   try{
@@ -641,10 +663,10 @@ async function mountExpress(){
 }
 function showPaygate(){ $('payGate').classList.remove('hidden'); if(state.teaser) $('pgsub').textContent=state.teaser; mountExpress(); }
 window.addEventListener('DOMContentLoaded',()=>{ $('introVid').addEventListener('ended',showPaygate); });
-function reset(){ runId++; introUrl=''; const v=$('introVid'); if(v){v.pause();} $('player').classList.add('hidden');
+function reset(){ runId++; introUrl=''; const v=$('introVid'); if(v){v.pause();} $('player').classList.add('hidden'); $('player').classList.remove('land');
   state={topic:'',letter:'',jid:'',name:'',recorded:false,teaser:''}; $('topic').value='';
-  $('letterTop').textContent=''; $('letterBot').textContent=''; $('mid').classList.add('hidden');
-  photoReady=false; typingDone=false; renderWall(); show('idle'); }
+  $('letterTxt').textContent=''; $('deck').classList.add('hidden');
+  photoReady=false; typingDone=false; deckShown=false; deckFront=0; renderWall(); show('idle'); }
 </script></body></html>"""
 
 

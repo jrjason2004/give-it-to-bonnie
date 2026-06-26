@@ -38,9 +38,13 @@ HOST = os.environ.get("HOST", "127.0.0.1")  # set HOST=0.0.0.0 in prod (done in 
 BASE_URL = os.environ.get("BASE_URL", f"http://localhost:{PORT}")
 LETTER_MODEL = "gemini-3.1-flash-lite"          # fast (~2s) so the letter types out near-instantly
 PREVIEW = "assets/preview_dropoff.mp4"          # saved full render shown on the upsell page
-# 3 Bonnie pose references (drop them in assets/ as these names); rotates per request. If absent,
-# the photo is generated text-to-image (no ref) until you add them.
-POSE_REFS = ["bonnie_hug.jpg"]
+# 3 Bonnie pose references, rotated per request. Each holds different toys, so each has its own
+# swap prompt ({p} = the topic pile). Hug cradles one toy; porch + grass-pile hold several.
+POSE_REFS = [
+    ("bonnie_hug.jpg",   "Replace the cowboy toy with {p}."),
+    ("bonnie_pose1.jpg", "Remove all the toys, and add {p}."),   # porch
+    ("bonnie_pose2.jpg", "Remove all the toys, and add {p}."),   # grass pile
+]
 _pose_i = 0
 _pose_lock = threading.Lock()
 JOBS = {}
@@ -75,8 +79,9 @@ _FREE_SCHEMA = {"type": "object", "required": ["pile", "letter"], "properties": 
 
 
 def _next_pose():
+    """Rotate to the next available (ref_file, prompt_template). None if no refs exist."""
     global _pose_i
-    avail = [p for p in POSE_REFS if (config.ASSETS / p).exists()]
+    avail = [r for r in POSE_REFS if (config.ASSETS / r[0]).exists()]
     if not avail:
         return None
     with _pose_lock:
@@ -169,9 +174,10 @@ def bonnie_photo(pile):
     """Render the Bonnie-holding-the-pile photo (the surprise revealed at the end of the letter)."""
     sid = "bonnie_" + uuid.uuid4().hex[:8]
     ref = _next_pose()
-    inputs = [str(config.ASSETS / ref)] if ref else []
+    inputs = [str(config.ASSETS / ref[0])] if ref else []
     out = OUT / f"{sid}.jpg"
-    prompt = f"Replace the cowboy toy with {pile}. Sharpen animation quality. Keep everything else the same."
+    swap = ref[1].format(p=pile) if ref else f"A girl holding {pile}."
+    prompt = f"{swap} Sharpen animation quality. Keep everything else the same."
     # 512 + no high-thinking (grounding kept for brand accuracy) -> ~8s instead of ~33s; 1:1 polaroid
     gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, str(out), grounding=True,
                           thinking_high=False, image_size="512", aspect="1:1")
@@ -281,7 +287,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
        padding:0 0 max(10px,env(safe-area-inset-bottom))}
 .col{width:100%;display:flex;flex-direction:column;align-items:center}
 .hero{width:100%;max-width:480px;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 18px}
-#idle .hero{min-height:calc(100dvh - 150px)}   /* gallery peeks ~half a polaroid before scroll */
+#idle .hero{min-height:calc(100dvh - 270px)}   /* gallery sits higher — mostly in frame before scroll */
 .titleTag{background:linear-gradient(180deg,#c98a4e,#a86b34);border:3px solid #8a5526;border-radius:16px;padding:12px 26px;box-shadow:0 8px 20px rgba(0,0,0,.32);transform:rotate(-1deg)}
 .titleTag div{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(26px,7vw,34px);color:#fff6e6;text-shadow:0 2px 0 rgba(0,0,0,.28)}
 .box{position:relative;width:100%;max-width:460px;background:linear-gradient(180deg,#a86b34,#8a5526);border:1px solid #6f441e;border-top:6px solid #c98a4e;border-radius:26px;padding:22px 24px 26px;box-shadow:0 24px 60px rgba(0,0,0,.32)}
@@ -308,15 +314,16 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .polcap .wi{font-family:'Fredoka',sans-serif;font-weight:600;font-size:13px;color:#23282f}
 .poltime{font-family:'Nunito',sans-serif;font-size:10px;color:#a89a82;text-align:center;padding:1px 0 9px}
 .panel{position:fixed;inset:0;z-index:30;background:linear-gradient(180deg,rgba(122,76,34,.9),rgba(74,46,20,.97));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:22px;overflow:auto}
-/* free deliverable: the full letter, with a photo↔video deck overlaying its MIDDLE (no displacement) */
+/* free deliverable: a 3-card stack (letter · photo · video). Swipe sends the front card to the back;
+   the cards behind peek out to the side (even off the screen edge). */
 #free{justify-content:flex-start}
-.fInner{margin:auto 0;width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center}
-.letterWrap{position:relative;width:100%}
-.letter{position:relative;width:100%;background:repeating-linear-gradient(#fffef9,#fffef9 31px,#e7d9c4 32px);background-color:#fffef9;border-radius:8px;padding:30px 22px 24px;box-shadow:0 14px 40px rgba(0,0,0,.35);animation:popIn .5s cubic-bezier(.18,.9,.32,1.4)}
+.fInner{margin:auto 0;width:100%;max-width:430px;display:flex;flex-direction:column;align-items:center}
+.deck{position:relative;width:100%;height:0;transition:height .45s ease}
+.ocard{position:absolute;top:0;left:50%;width:100%;transform:translateX(-50%);transform-origin:center top;transition:transform .5s cubic-bezier(.2,.85,.25,1),opacity .4s;cursor:pointer;backface-visibility:hidden}
+.letter{position:relative;width:100%;max-height:58vh;overflow-y:auto;-webkit-overflow-scrolling:touch;background:repeating-linear-gradient(#fffef9,#fffef9 31px,#e7d9c4 32px);background-color:#fffef9;border-radius:8px;padding:30px 22px 24px;box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.letter::-webkit-scrollbar{width:0}
 .letter p{font-family:'Caveat',cursive;font-size:23px;line-height:32px;color:#2c3a66;margin:0;white-space:pre-line}
-.deck{position:absolute;left:0;right:0;top:50%;height:0;z-index:5}
-.ocard{position:absolute;left:50%;top:0;width:min(84%,280px);transform:translate(-50%,-50%);transition:transform .5s cubic-bezier(.2,.85,.25,1),opacity .4s;cursor:pointer;opacity:0}
-.polaroid{background:#fffdf8;padding:10px 10px 0;border-radius:4px;box-shadow:0 18px 46px rgba(0,0,0,.5);width:100%}
+.polaroid{background:#fffdf8;padding:10px 10px 0;border-radius:4px;box-shadow:0 18px 46px rgba(0,0,0,.5);width:100%;max-width:280px;margin:0 auto}
 .polaroid img{width:100%;display:block;border-radius:2px;aspect-ratio:1/1;object-fit:cover;background:#e8e2d4}
 .polaroid .pcap{font-family:'Caveat',cursive;font-size:18px;color:#4a3b22;text-align:center;padding:8px 4px 10px}
 .scrollhint{font-family:'Fredoka',sans-serif;font-weight:500;font-size:12.5px;color:rgba(255,255,255,.9);text-shadow:0 1px 3px rgba(0,0,0,.35);margin-top:4px;animation:bob 1.7s ease-in-out infinite}
@@ -331,7 +338,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .ctitle{font-family:'Fredoka',sans-serif;font-weight:600;font-size:clamp(18px,4.6vw,22px);color:#fff6e6;text-align:center;margin-top:10px}
 .ccap{font-family:'Nunito',sans-serif;font-size:13.5px;color:rgba(255,246,230,.85);text-align:center;margin:6px 12px 0}
 /* the "video file" tile — poster + play icon + "Watch Andy drop it off" */
-.filecard{width:100%;max-width:300px;background:#171b27;border-radius:16px;padding:8px 8px 4px;box-shadow:0 16px 40px rgba(0,0,0,.5);cursor:pointer}
+.filecard{width:100%;max-width:300px;margin:0 auto;background:#171b27;border-radius:16px;padding:8px 8px 4px;box-shadow:0 16px 40px rgba(0,0,0,.5);cursor:pointer}
 .fileframe{position:relative;width:100%;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:#000}
 .fileposter{width:100%;height:100%;object-fit:cover;filter:brightness(.78)}
 .playbtn{position:absolute;inset:0;margin:auto;width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 28px rgba(0,0,0,.45);animation:pulseGlow 2.4s ease-in-out infinite}
@@ -406,18 +413,16 @@ input::placeholder{color:rgba(74,59,34,.4)}
   <!-- FREE: the full letter; the photo↔video deck overlays its middle -->
   <div id=free class="panel hidden">
     <div class=fInner>
-      <div class=letterWrap>
-        <div class=letter><p id=letterTxt></p></div>
-        <div id=deck class="deck hidden">
-          <div class="ocard photoCard" id=photoCard><div class=polaroid><img id=photo alt=""><div class=pcap></div></div></div>
-          <div class="ocard videoCard" id=videoCard onclick=videoTap()>
-            <div class=filecard>
-              <div class=fileframe>
-                <img class=fileposter src="assets/intro_poster.jpg" alt="">
-                <div class=playbtn><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
-              </div>
-              <div class=vtitle>Watch Andy drop it off</div>
+      <div id=deck class=deck>
+        <div class="ocard letterCard" id=letterCard onclick="cardClick(0)"><div class=letter><p id=letterTxt></p></div></div>
+        <div class="ocard photoCard" id=photoCard onclick="cardClick(1)"><div class=polaroid><img id=photo alt=""><div class=pcap></div></div></div>
+        <div class="ocard videoCard" id=videoCard onclick="cardClick(2)">
+          <div class=filecard>
+            <div class=fileframe>
+              <img class=fileposter src="assets/intro_poster.jpg" alt="">
+              <div class=playbtn><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"></path></svg></div>
             </div>
+            <div class=vtitle>Watch Andy drop it off</div>
           </div>
         </div>
       </div>
@@ -500,43 +505,54 @@ $('topic').addEventListener('keydown',e=>{if(e.key==='Enter')give();});
 $('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')nameGo();});
 let li=null;
 function rotate(el,lines){let i=0;el.textContent=lines[0];clearInterval(li);li=setInterval(()=>{i=(i+1)%lines.length;el.textContent=lines[i];},1500);}
-// ---- the letter types in full; a photo↔video deck OVERLAYS its middle (doesn't displace text) ----
-let photoReady=false, typingDone=false, deckFront=0, deckShown=false;
-function layoutDeck(){
-  [['photoCard',0],['videoCard',1]].forEach(([id,i])=>{
-    const el=$(id), front=(i===deckFront);
-    el.style.zIndex=front?3:2;
-    el.style.opacity=deckShown?1:0;
-    el.style.pointerEvents=deckShown?'auto':'none';
-    const rot=front?-2:5, tx=front?0:22, sc=front?1:0.9;
-    el.style.transform=`translate(calc(-50% + ${tx}px),-50%) rotate(${rot}deg) scale(${sc})`;
-  });
+// ---- 3-card stack: letter(0) · photo(1) · video(2). Swipe sends the front card to the back. ----
+const CARDS=['letterCard','photoCard','videoCard'];
+let photoReady=false, typingDone=false, revealed=false;
+let stack=[0,1,2];   // front first
+function setDeckHeight(){ $('deck').style.height=$(CARDS[stack[0]]).offsetHeight+'px'; }
+function layout(){
+  if(!revealed){   // typing: only the letter, in front
+    CARDS.forEach((id,i)=>{ const el=$(id), f=(i===0);
+      el.style.zIndex=f?3:1; el.style.opacity=f?1:0; el.style.pointerEvents=f?'auto':'none';
+      el.style.transform=f?'translateX(-50%) rotate(-2deg)':'translateX(-50%) rotate(-2deg) scale(.9)'; });
+  } else {         // stacked: front centered, others peek out to the right (can run off-screen)
+    stack.forEach((ci,p)=>{ const el=$(CARDS[ci]);
+      el.style.zIndex=3-p; el.style.opacity=1; el.style.pointerEvents='auto';
+      const tx=p*36, rot=-2+p*6, sc=1-p*0.07;
+      el.style.transform=`translateX(calc(-50% + ${tx}px)) rotate(${rot}deg) scale(${sc})`; });
+  }
+  setDeckHeight();
 }
-function deckTo(f){ deckFront=(f+2)%2; layoutDeck(); }
-function videoTap(){ if(deckFront!==1){ deckTo(1); return; } openPlayer(); }
+function spin(dir){ if(!revealed)return; if(dir>0) stack.push(stack.shift()); else stack.unshift(stack.pop()); layout(); }
+function bringFront(ci){ if(!revealed)return; while(stack[0]!==ci) stack.push(stack.shift()); layout(); }
+function cardClick(ci){
+  if(!revealed){ return; }
+  if(stack[0]===ci){ if(ci===2) openPlayer(); else spin(1); }   // front: video plays, else advance
+  else bringFront(ci);                                          // tap a peeking card -> bring it up
+}
+function videoTap(){ cardClick(2); }
 function tryReveal(){
-  if(deckShown || !photoReady || !typingDone) return;
-  deckShown=true; $('deck').classList.remove('hidden'); layoutDeck();
-  $('deck').scrollIntoView({block:'center'}); pollIntro();   // bring the overlay into view + pre-warm
+  if(revealed || !photoReady || !typingDone) return;
+  revealed=true; stack=[1,2,0];   // photo on top, then video, then letter
+  layout(); $('deck').scrollIntoView({block:'center'}); pollIntro();
 }
 (function deckSwipe(){ const el=$('deck'); let x0=null,y0=null,lock=null;
   el.addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;lock=null;},{passive:true});
   el.addEventListener('touchmove',e=>{ if(x0==null)return; const dx=e.touches[0].clientX-x0,dy=e.touches[0].clientY-y0;
     if(lock==null&&(Math.abs(dx)>6||Math.abs(dy)>6)) lock=Math.abs(dx)>Math.abs(dy)?'x':'y'; },{passive:true});
-  el.addEventListener('touchend',e=>{ if(x0==null)return; const dx=e.changedTouches[0].clientX-x0; if(lock==='x'&&Math.abs(dx)>40) deckTo(deckFront+(dx<0?1:-1)); x0=null; });
-  let mx=null; el.addEventListener('mousedown',e=>mx=e.clientX);
-  el.addEventListener('mouseup',e=>{ if(mx==null)return; const dx=e.clientX-mx; if(Math.abs(dx)>40) deckTo(deckFront+(dx<0?1:-1)); mx=null; });
-  $('photoCard').addEventListener('click',()=>{ if(deckFront!==0) deckTo(0); });
+  el.addEventListener('touchend',e=>{ if(x0==null)return; const dx=e.changedTouches[0].clientX-x0; if(lock==='x'&&Math.abs(dx)>40) spin(dx<0?1:-1); x0=null; });
+  let mx=null,my=null; el.addEventListener('mousedown',e=>{mx=e.clientX;my=e.clientY;});
+  el.addEventListener('mouseup',e=>{ if(mx==null)return; if(Math.abs(e.clientX-mx)>40&&Math.abs(e.clientX-mx)>Math.abs(e.clientY-my)) spin(e.clientX-mx<0?1:-1); mx=null; });
 })();
 function typeLetter(named){
   const mine=runId;
-  $('letterTxt').textContent=''; typingDone=false; deckShown=false; deckFront=0;
-  $('deck').classList.add('hidden'); layoutDeck(); $('freeActions').classList.add('hidden');
+  $('letterTxt').textContent=''; typingDone=false; revealed=false; stack=[0,1,2];
+  layout(); $('freeActions').classList.add('hidden');
   let i=0;
   (function step(){
     if(mine!==runId) return;
-    if(i>=named.length){ typingDone=true; $('freeActions').classList.remove('hidden'); tryReveal(); return; }
-    $('letterTxt').textContent+=named[i++]; $('letterTxt').scrollIntoView({block:'end'});
+    if(i>=named.length){ typingDone=true; $('freeActions').classList.remove('hidden'); setDeckHeight(); tryReveal(); return; }
+    $('letterTxt').textContent+=named[i++]; const lp=$('letterCard').firstElementChild; lp.scrollTop=lp.scrollHeight; setDeckHeight();
     const c=named[i-1]; const d=(c==='.'||c==='!'||c==='?')?240:(c==='\n')?150:(c===','?110:32);
     setTimeout(step,d);
   })();
@@ -554,8 +570,8 @@ async function pollPhoto(jid){
 function give(){
   const t=$('topic').value.trim(); if(!t)return; state.topic=t; state.name=''; state.recorded=false;
   // reset, then kick generation immediately — letter + photo + intro run while they type their name
-  runId++; introUrl=''; photoReady=false; typingDone=false; deckShown=false; deckFront=0;
-  $('photo').src=''; $('letterTxt').textContent=''; $('deck').classList.add('hidden');
+  runId++; introUrl=''; photoReady=false; typingDone=false; revealed=false; stack=[0,1,2];
+  $('photo').src=''; $('letterTxt').textContent='';
   genJob=(async()=>{
     const j=await (await fetch('/api/free',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:t})})).json();
     if(j.error||!j.letter) throw new Error(j.error||'no letter');
@@ -675,8 +691,8 @@ function showPaygate(){ $('payGate').classList.remove('hidden'); if(state.teaser
 window.addEventListener('DOMContentLoaded',()=>{ $('introVid').addEventListener('ended',showPaygate); });
 function reset(){ runId++; introUrl=''; const v=$('introVid'); if(v){v.pause();} $('player').classList.add('hidden');
   state={topic:'',letter:'',jid:'',name:'',recorded:false,teaser:''}; $('topic').value='';
-  $('letterTxt').textContent=''; $('deck').classList.add('hidden');
-  photoReady=false; typingDone=false; deckShown=false; deckFront=0; renderWall(); show('idle'); }
+  $('letterTxt').textContent='';
+  photoReady=false; typingDone=false; revealed=false; stack=[0,1,2]; renderWall(); show('idle'); }
 </script></body></html>"""
 
 

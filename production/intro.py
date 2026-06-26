@@ -23,7 +23,7 @@ LINE_AT_S = 5.5   # when Andy's line starts in the intro
 INTRO_LINE = "someone told me you're really good with {word}"   # {word} = the topic swap-in
 # ElevenLabs Andy voice settings for the intro line (tuned for the intro specifically)
 INTRO_VOICE = {"stability": 0.8, "similarity_boost": 0.8, "style": 0.35,
-               "use_speaker_boost": True, "speed": 0.90}
+               "use_speaker_boost": True, "speed": 0.8}
 
 _WORD_SCHEMA = {"type": "object", "required": ["word"], "properties": {
     "word": {"type": "string", "description": "the swap-in word — 1 short word (occasionally 2) "

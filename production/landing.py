@@ -281,6 +281,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
        padding:0 0 max(10px,env(safe-area-inset-bottom))}
 .col{width:100%;display:flex;flex-direction:column;align-items:center}
 .hero{width:100%;max-width:480px;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:0 18px}
+#idle .hero{min-height:calc(100dvh - 150px)}   /* gallery peeks ~half a polaroid before scroll */
 .titleTag{background:linear-gradient(180deg,#c98a4e,#a86b34);border:3px solid #8a5526;border-radius:16px;padding:12px 26px;box-shadow:0 8px 20px rgba(0,0,0,.32);transform:rotate(-1deg)}
 .titleTag div{font-family:'Fredoka',sans-serif;font-weight:700;font-size:clamp(26px,7vw,34px);color:#fff6e6;text-shadow:0 2px 0 rgba(0,0,0,.28)}
 .box{position:relative;width:100%;max-width:460px;background:linear-gradient(180deg,#a86b34,#8a5526);border:1px solid #6f441e;border-top:6px solid #c98a4e;border-radius:26px;padding:22px 24px 26px;box-shadow:0 24px 60px rgba(0,0,0,.32)}
@@ -342,10 +343,14 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .vidbox{position:relative;width:100%;max-height:100%;aspect-ratio:16/9}
 #introVid{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;display:block}
 .pclose{position:absolute;top:8px;right:8px;z-index:4;width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:16px;cursor:pointer}
-.pfull{position:absolute;bottom:8px;right:8px;z-index:4;width:38px;height:38px;border-radius:9px;border:none;background:rgba(0,0,0,.55);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.pfull svg{width:19px;height:19px;fill:#fff}
-#player.land{width:100vh;height:100vw;transform-origin:top left;transform:translateX(100vw) rotate(90deg)}
+/* turn the phone sideways -> the video fills the whole screen (no fullscreen button needed) */
+@media (orientation:landscape){
+  .vidbox{width:100%;height:100%;max-height:100%;aspect-ratio:auto}
+  #introVid{object-fit:cover}
+}
 #payGate{position:absolute;inset:0;z-index:5;background:linear-gradient(180deg,rgba(0,0,0,.45),rgba(0,0,0,.92));display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center}
+.pgprice{font-family:'Fredoka',sans-serif;font-weight:600;color:#FFC42E;font-size:20px;margin-bottom:14px}
+.paylink{background:transparent;border:none;color:rgba(255,255,255,.85);font-family:'Nunito',sans-serif;font-size:13px;text-decoration:underline;cursor:pointer;margin-top:6px}
 .pgttl{font-family:'Fredoka',sans-serif;font-weight:600;color:#fff;font-size:clamp(22px,6vw,28px);margin-bottom:8px}
 .pgsub{font-family:'Nunito',sans-serif;color:rgba(255,255,255,.82);font-size:14px;max-width:340px;line-height:1.45;margin-bottom:22px}
 .loadwrap{width:100%;max-width:430px;background:rgba(255,250,242,.96);border-radius:14px;padding:18px;box-shadow:inset 0 2px 6px rgba(0,0,0,.16)}
@@ -369,7 +374,6 @@ input::placeholder{color:rgba(74,59,34,.4)}
           <div class=boxlbl><span style="font-size:19px">🧸</span>Type something you're ready to let go of</div>
           <div class=inrow><input id=topic placeholder="anything at all…" autocomplete=off><button class=give onclick=give()>Give</button></div>
         </div>
-        <div class=scrollhint>↓ what others gave Bonnie</div>
       </div>
       <div class=wall>
         <div class=wallrow id=wallrow></div>
@@ -429,13 +433,13 @@ input::placeholder{color:rgba(74,59,34,.4)}
     <div class=vidbox>
       <video id=introVid playsinline webkit-playsinline></video>
       <button class=pclose onclick=closePlayer()>✕</button>
-      <button class=pfull onclick=goFull() aria-label="Fullscreen"><svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"></path></svg></button>
     </div>
     <div id=payGate class=hidden>
       <div class=pgttl>Want to see the rest?</div>
       <div class=pgsub id=pgsub>Andy carries it across the yard, knocks, and hands Bonnie your toy — building to the pull-string moment.</div>
-      <div id=express style="width:100%;max-width:300px;margin-bottom:10px"></div>
-      <button class=buy onclick=pay() style="max-width:300px"><span style="display:flex;flex-direction:column;line-height:1.12"><span style="font-size:16px">🍿 Continue watching</span><span style="font-size:11px;font-weight:500;opacity:.85">the full 40-second video</span></span><span class=price>$5</span></button>
+      <div class=pgprice>$5 to continue</div>
+      <div id=express style="width:100%;max-width:300px;margin:2px 0 4px"></div>
+      <button class=paylink onclick=pay()>or pay with a card</button>
       <button class=ghost onclick=replayIntro()>↺ watch the intro again</button>
     </div>
   </div>
@@ -597,13 +601,12 @@ async function openPlayer(){          // open immersive, play the FREE intro cli
   v.src=url+'?t='+Date.now(); v.currentTime=0; v.muted=false;
   v.play().catch(()=>{ v.muted=true; v.play().catch(()=>{}); });
 }
-function goFull(){ $('player').classList.toggle('land'); }   // CSS-rotate landscape (overlays still work)
 function recordWall(){   // add this finished generation to the live gallery (once)
   if(state.recorded||!state.jid||!state.name) return; state.recorded=true;
   fetch('/api/wall_add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid,name:state.name})}).catch(()=>{});
 }
 function replayIntro(){ $('payGate').classList.add('hidden'); const v=$('introVid'); v.currentTime=0; v.play().catch(()=>{}); }
-function closePlayer(){ const v=$('introVid'); v.pause(); $('player').classList.add('hidden'); $('player').classList.remove('land'); }
+function closePlayer(){ const v=$('introVid'); v.pause(); $('player').classList.add('hidden'); }
 async function pay(){
   $('introVid').pause();
   try{
@@ -670,7 +673,7 @@ async function mountExpress(){
 }
 function showPaygate(){ $('payGate').classList.remove('hidden'); if(state.teaser) $('pgsub').textContent=state.teaser; mountExpress(); }
 window.addEventListener('DOMContentLoaded',()=>{ $('introVid').addEventListener('ended',showPaygate); });
-function reset(){ runId++; introUrl=''; const v=$('introVid'); if(v){v.pause();} $('player').classList.add('hidden'); $('player').classList.remove('land');
+function reset(){ runId++; introUrl=''; const v=$('introVid'); if(v){v.pause();} $('player').classList.add('hidden');
   state={topic:'',letter:'',jid:'',name:'',recorded:false,teaser:''}; $('topic').value='';
   $('letterTxt').textContent=''; $('deck').classList.add('hidden');
   photoReady=false; typingDone=false; deckShown=false; deckFront=0; renderWall(); show('idle'); }

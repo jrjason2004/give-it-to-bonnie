@@ -80,18 +80,30 @@ def stage_images(script, scenes=None):
         pending = [(sid, spec) for sid, spec in pending if not done(spec)]
 
 
+# Scenes that use Wan: the 4.5 reveal overlay (first-last-frame, detected by end!=None)
+# and the closing trio (muted, motion-only — Wan is faster/cheaper for these).
+_WAN_SCENES = {"scene8", "scene9", "scene10"}
+
+
 def _gen_clip(job):
-    raw = job["out"].replace(".mp4", "_vraw.mp4")
+    out = job["out"]
+    # First-last-frame overlay (scene4_ov has end set) and closing muted scenes → Wan
+    if job.get("end") or job["id"] in _WAN_SCENES:
+        return job["id"], video_gen.generate(
+            job["prompt"], job["start"], out,
+            end_img=job.get("end"), dur_s=job["dur"],
+            overrides=job.get("overrides"))
+    # All dialogue/action scenes → Veo 3.1 Lite (native lip-sync, audio stripped below)
+    raw = out.replace(".mp4", "_vraw.mp4")
     _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
-    # Strip Veo's native audio — the pipeline handles all dialogue/TTS separately
-    subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", job["out"]],
+    subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
                    check=True, capture_output=True)
-    return job["id"], job["out"]
+    return job["id"], out
 
 
 def stage_videos(script, scenes=None):
     scenes = scenes or config.SCENES
-    log(f"STAGE 2/4 — clips (Veo 3.1 Lite, up to 5 parallel)")
+    log(f"STAGE 2/4 — clips (Veo 3.1 for scenes 1-7, Wan for 4.5-overlay + scenes 8-10)")
     jobs = []
     for sc in scenes:
         v = sc["video"]

@@ -604,7 +604,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
     </div>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button class=give onclick=reset()>↻ Give another</button>
-      <a id=dl download style="text-decoration:none;border:2px solid #ffe9c7;border-radius:12px;background:rgba(255,250,242,.12);color:#fff6e6;font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;padding:12px 18px">Download</a>
+      <button id=dl onclick=saveVideo() style="border:2px solid #ffe9c7;border-radius:12px;background:rgba(255,250,242,.12);color:#fff6e6;font-family:'Fredoka',sans-serif;font-weight:600;font-size:15px;padding:12px 18px;cursor:pointer">Save Video</button>
     </div>
     <div class=foot>a <a href="https://jasonstacks.com" target=_blank rel=noopener>Stacks</a> experience</div>
   </div>
@@ -808,12 +808,34 @@ async function pollVideo(jid, topic){
   }
   clearInterval(li); alert('This is taking a while — please refresh the page.'); show('idle');
 }
+let _videoUrl='';
 function showVideo(url,topic){
-  // S3 presigned URLs already have query params — don't append cache-buster (corrupts signature)
   var src=url.startsWith('http')?url:url+'?t='+Date.now();
-  $('heroVid').src=src; $('dl').href=url;
+  _videoUrl=src;
+  $('heroVid').src=src;
   $('vidTitle').textContent=(topic?('"'+topic+'" — '):'')+'delivered 🎬';
   show('video'); $('heroVid').play().catch(()=>{});
+}
+async function saveVideo(){
+  if(!_videoUrl) return;
+  const btn=$('dl');
+  // iOS Share Sheet — triggers "Save Video" / "Save to Files" natively
+  if(navigator.share){
+    btn.textContent='Preparing…'; btn.disabled=true;
+    try{
+      const resp=await fetch(_videoUrl);
+      const blob=await resp.blob();
+      const file=new File([blob],'bonnie-video.mp4',{type:'video/mp4'});
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        await navigator.share({files:[file],title:'Give It To Bonnie'});
+        btn.textContent='Save Video'; btn.disabled=false; return;
+      }
+    }catch(e){ console.log('share failed',e); }
+    btn.textContent='Save Video'; btn.disabled=false;
+  }
+  // Desktop fallback — regular anchor download
+  const a=document.createElement('a');
+  a.href=_videoUrl; a.download='bonnie-video.mp4'; a.click();
 }
 // returning from Stripe: confirm payment, then kick off and poll the full video render
 async function handleReturn(){

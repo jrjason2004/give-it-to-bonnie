@@ -331,6 +331,27 @@ def wall_list():
     return list(reversed(_load_wall()))[:16]
 
 
+_PIPELINE_GLOBS = [
+    "GiveBonnie_*_Generated.jpg", "GiveBonnie_*_Generated.png",
+    "raw_scene*.mp4",
+    "final_scene*.mp4",
+    "scene*_v.mp3", "scene*_v.wav", "scene*_a.mp4", "scene*_voice.mp4",
+    "scene*_t.mp4", "scene*_ov.mp4", "scene*_crop*.mp4", "scene*_toy.wav",
+    "closing.mp4", "closing_vo.mp3", "_body.mp4", "_chapter_body.mp4",
+    "script.json",
+]
+
+
+def _clear_pipeline_cache():
+    """Delete per-render intermediate files so a new topic always generates fresh."""
+    for pat in _PIPELINE_GLOBS:
+        for f in OUT.glob(pat):
+            try:
+                f.unlink()
+            except Exception:
+                pass
+
+
 def _video_job(jid, topic):
     j = JOBS.setdefault(jid, {})
     if j.get("video_started"):
@@ -338,6 +359,7 @@ def _video_job(jid, topic):
     j["video_started"] = True
     try:
         _ensure_fleet()
+        _clear_pipeline_cache()
         path = pipeline.run(topic)
         rel = str(Path(path).relative_to(ROOT))
         JOBS[jid]["video"] = rel

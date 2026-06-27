@@ -58,7 +58,13 @@ def generate_video(prompt: str, image_path: str | None, out_path: str,
         if r.get("done"):
             if r.get("error"):
                 raise RuntimeError(f"veo op error: {json.dumps(r['error'])[:400]}")
-            vid = _find_video(r.get("response", {}))
+            resp = r.get("response", {})
+            # Detect RAI content filter — surface reason so we know which prompt failed
+            gvr = resp.get("generateVideoResponse", {})
+            if gvr.get("raiMediaFilteredCount"):
+                reasons = gvr.get("raiMediaFilteredReasons", [])
+                raise RuntimeError(f"veo RAI filtered: {reasons[0][:200] if reasons else 'unknown'}")
+            vid = _find_video(resp)
             if not vid:
                 raise RuntimeError("veo: no video in response: " + json.dumps(r)[:400])
             if vid.get("uri"):

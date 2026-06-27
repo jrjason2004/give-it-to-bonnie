@@ -93,11 +93,15 @@ def _gen_clip(job):
             job["prompt"], job["start"], out,
             end_img=job.get("end"), dur_s=job["dur"],
             overrides=job.get("overrides"))
-    # All dialogue/action scenes → Veo 3.1 Lite (native lip-sync, audio stripped below)
+    # All dialogue/action scenes → Veo 3.1 Lite; fall back to Wan if Veo is filtered/fails
     raw = out.replace(".mp4", "_vraw.mp4")
-    _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
-    subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
-                   check=True, capture_output=True)
+    try:
+        _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
+        subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
+                       check=True, capture_output=True)
+    except Exception as e:
+        log(f"  ⚠ {job['id']} Veo failed ({str(e)[-120:]}) → Wan fallback")
+        video_gen.generate(job["prompt"], job["start"], out, dur_s=job["dur"])
     return job["id"], out
 
 

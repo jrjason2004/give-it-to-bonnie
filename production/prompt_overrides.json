@@ -1,0 +1,42 @@
+{
+  "scene2": {
+    "image": "replace the cowgirl and horse toy in the first image with {scene1_item}, and sharpen the animation quality. Keep everything else the same.",
+    "video": "Guy on the left says “{scene2_line}” as little girl walks over and grabs the {scene1_item_short} from him."
+  },
+  "scene1": {
+    "image": "make this pulling {scene1_item} out of the box, and sharpen the animation quality. Keep everything else the same.",
+    "video": "Guy pulls the {scene1_item} out of the box, brings it in front of him and says “{scene1_line}”."
+  },
+  "scene3": {
+    "video": "Guy looks at each item, holds them out in front of himself, then brings them close together",
+    "image": "Swap the rice flour and tapioca starch with {scene3_items}."
+  },
+  "scene4": {
+    "video": "The girl slowly peers into the box, and then cutely says \"{scene4_line}\".",
+    "overlay_image": "Swap the waiter toy and accessories out for a {action_figure} toy lying in the exact same pose and position in the box.",
+    "overlay_video": "Camera slowly moves forward and down to reveal the {action_figure_short} toy laying in the box.",
+    "image": "Replace the toys on the ground with the {scene1_item}, and {scene3_items}. Sharpen quality of the characters. Keep everything else the same."
+  },
+  "scene5": {
+    "image": "replace the waiter toy with the {action_figure_short} toy in same style with a pull ring on its back.",
+    "video": "Guy holds up the {action_figure_short} and says \"{scene5_line}\"."
+  },
+  "scene6": {
+    "image": "make the guy on the left holding the {action_figure_short} toy, and make the girl on the right excited pointing at it, while the guy is straight faced. Keep everything else the same. Sharpen animation quality.",
+    "video": "The little girl on the right points and cutely says \"{scene6_line}\". The man on the left silently holds the {action_figure_short} toy."
+  },
+  "scene7": {
+    "image": "replace the waiter toy with the {action_figure_short} toy in same style, facing the same direction, with a pull ring on its back. Keep everything else the same.",
+    "video": "Guy quickly pulls the pull ring and quickly lets go, watching the ring and string retract."
+  },
+  "scene10": {
+    "video": "Guy smiles and hands the {action_figure_short} toy to the girl as she smiles and hugs it."
+  },
+  "scene8": {
+    "image": "{scene8_image}"
+  },
+  "scene9": {
+    "video": "The boy runs in dramatic cinematic slow motion, with the toy on his shoulder",
+    "image": "Close-up shot of a boy running down a suburban street, wearing {scene9_outfit}, with the {action_figure_short} toy on his shoulders, laughing."
+  }
+}

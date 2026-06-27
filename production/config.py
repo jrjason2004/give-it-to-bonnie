@@ -195,7 +195,7 @@ CLOSING_SEQUENCE = ["scene8", "scene9", "scene10"]
 
 # Approved prompt overrides from the playground (output/prompt_overrides.json) win over the
 # defaults above — keys: {scene_id: {image, video, overlay_image, overlay_video}}.
-PROMPT_OVERRIDES = OUTPUT / "prompt_overrides.json"
+PROMPT_OVERRIDES = ROOT / "prompt_overrides.json"
 
 
 def _apply_overrides():

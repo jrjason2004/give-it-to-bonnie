@@ -14,9 +14,12 @@ import traceback
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
+import subprocess
+
 import config
 import script_brain
 import gemini
+import veo as _veo
 import video_gen
 import voice
 import composite
@@ -78,14 +81,17 @@ def stage_images(script, scenes=None):
 
 
 def _gen_clip(job):
-    return job["id"], video_gen.generate(job["prompt"], job["start"], job["out"],
-                                         end_img=job["end"], dur_s=job["dur"],
-                                         overrides=job.get("overrides"))
+    raw = job["out"].replace(".mp4", "_vraw.mp4")
+    _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
+    # Strip Veo's native audio — the pipeline handles all dialogue/TTS separately
+    subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", job["out"]],
+                   check=True, capture_output=True)
+    return job["id"], job["out"]
 
 
 def stage_videos(script, scenes=None):
     scenes = scenes or config.SCENES
-    log(f"STAGE 2/4 — clips (Wan 2.2 Lightning, {len(video_gen.ENDPOINTS)} boxes in parallel)")
+    log(f"STAGE 2/4 — clips (Veo 3.1 Lite, up to 5 parallel)")
     jobs = []
     for sc in scenes:
         v = sc["video"]
@@ -106,11 +112,9 @@ def stage_videos(script, scenes=None):
             results[j["id"]] = j["out"]; log(f"  ↻ reuse {j['id']}")
         else:
             pending.append(j)
-    # one Wan ComfyUI worker = one concurrent clip; cap to the number of worker endpoints
-    ng = max(1, len(video_gen.ENDPOINTS))
     from concurrent.futures import as_completed
     if pending:
-        with ThreadPoolExecutor(max_workers=max(1, min(len(pending), ng))) as ex:
+        with ThreadPoolExecutor(max_workers=min(len(pending), 5)) as ex:
             for fut in as_completed([ex.submit(_gen_clip, j) for j in pending]):
                 jid, path = fut.result(); results[jid] = path; log(f"  ✓ {jid}")
     return results

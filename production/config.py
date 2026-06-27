@@ -88,7 +88,7 @@ SCENES = [
                     output="GiveBonnie_Scene1_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene1_Generated.jpg", end=None,
                     prompt='Guy says "{scene1_line}" 3D animation. Static shot.',
-                    dur=4, trim_end=1),
+                    dur=4),
          audio="andy",
          overlay=dict(clip="GiveBonnie_Scene1.5.mp4", at="middle", dur=1)),
 
@@ -98,7 +98,7 @@ SCENES = [
                     output="GiveBonnie_Scene2_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene2_Generated.jpg", end=None,
                     prompt='Guy on the left says "{scene2_line}" as little girl runs over and grabs the {scene1_item}. 3D animation. Static shot.',
-                    dur=4, trim_end=1),
+                    dur=4),
          audio="andy"),
 
     dict(id="scene3", name="Madly in love",
@@ -164,7 +164,7 @@ SCENES = [
 
     dict(id="scene8", name="Custom childhood shot",
          image=dict(inputs=["GiveBonnie_Scene5_Generated.jpg"],
-                    prompt="{scene8_image}",
+                    prompt="{scene8_image} Camera is level, straight-on view, subject is right-side up.",
                     output="GiveBonnie_Scene8_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene8_Generated.jpg", end=None,
                     prompt="{scene8_video}", dur=4, trim_end=0),

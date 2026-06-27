@@ -103,7 +103,10 @@ def tts(model: str, text: str, style: str, out_wav: str, voice="Charon") -> str:
             "generationConfig": {"responseModalities": ["AUDIO"],
                                  "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}}}}
     resp = _post(model, body)
-    for part in resp["candidates"][0]["content"]["parts"]:
+    candidates = resp.get("candidates")
+    if not candidates:
+        raise RuntimeError(f"gemini tts: no candidates (filtered?): {json.dumps(resp)[:400]}")
+    for part in candidates[0]["content"]["parts"]:
         if "inlineData" in part:
             pcm = base64.standard_b64decode(part["inlineData"]["data"])
             _write_wav(out_wav, pcm)

@@ -15,7 +15,9 @@ import json
 import time
 import uuid
 import threading
+import itertools
 import subprocess
+import urllib.request
 import urllib.parse
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -29,6 +31,85 @@ import supa
 import stripe_pay
 import central
 import pipeline
+import video_gen
+
+# ── GPU fleet (4× g6e.2xlarge, ComfyUI on :8188 reached via SSM tunnels) ───
+_FLEET_IDS = [
+    "i-0c661acc2678409f9",
+    "i-059db1ff762123998",
+    "i-01a5b91df29eda80d",
+    "i-022bb26f2939e404c",
+]
+_FLEET_PORTS = [9001, 9002, 9003, 9004]   # local SSM tunnel -> box:8188
+_FLEET_REGION = "us-east-1"
+_fleet_lock = threading.Lock()
+_fleet_ready = False
+_fleet_procs = []   # SSM tunnel subprocesses
+
+
+def _aws(*args):
+    return subprocess.run(
+        ["aws", "--region", _FLEET_REGION] + list(args),
+        capture_output=True, text=True
+    )
+
+
+def _comfy_ok(port):
+    try:
+        urllib.request.urlopen(f"http://localhost:{port}/system_stats", timeout=3)
+        return True
+    except Exception:
+        return False
+
+
+def _ensure_fleet():
+    """Start the GPU fleet if not already running, open SSM tunnels, update video_gen.ENDPOINTS."""
+    global _fleet_ready
+    with _fleet_lock:
+        if _fleet_ready:
+            return
+        print("[fleet] starting instances…", flush=True)
+        _aws("ec2", "start-instances", "--instance-ids", *_FLEET_IDS)
+
+        # wait up to 3 min for all instances to reach running
+        for _ in range(36):
+            r = _aws("ec2", "describe-instances", "--instance-ids", *_FLEET_IDS,
+                     "--query", "Reservations[*].Instances[*].State.Name", "--output", "text")
+            states = r.stdout.strip().split()
+            print(f"[fleet] states: {states}", flush=True)
+            if len(states) == len(_FLEET_IDS) and all(s == "running" for s in states):
+                break
+            time.sleep(5)
+
+        # open one SSM port-forward tunnel per box
+        print("[fleet] opening SSM tunnels…", flush=True)
+        for iid, port in zip(_FLEET_IDS, _FLEET_PORTS):
+            p = subprocess.Popen(
+                ["aws", "ssm", "start-session",
+                 "--target", iid,
+                 "--document-name", "AWS-StartPortForwardingSession",
+                 "--parameters", f'{{"portNumber":["8188"],"localPortNumber":["{port}"]}}',
+                 "--region", _FLEET_REGION],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            _fleet_procs.append(p)
+
+        # wait up to 5 min for ComfyUI to respond on each tunnel
+        ready_eps = []
+        for _ in range(60):
+            ready_eps = [f"http://localhost:{p}" for p in _FLEET_PORTS if _comfy_ok(p)]
+            print(f"[fleet] ComfyUI ready: {len(ready_eps)}/{len(_FLEET_PORTS)}", flush=True)
+            if len(ready_eps) == len(_FLEET_PORTS):
+                break
+            time.sleep(5)
+
+        if not ready_eps:
+            raise RuntimeError("fleet: no ComfyUI workers came up")
+
+        video_gen.ENDPOINTS = ready_eps
+        video_gen._rr = itertools.cycle(video_gen.ENDPOINTS)
+        print(f"[fleet] ready — {len(ready_eps)} workers: {ready_eps}", flush=True)
+        _fleet_ready = True
 
 ROOT = config.ROOT
 OUT = config.OUTPUT
@@ -255,6 +336,7 @@ def _video_job(jid, topic):
         return
     j["video_started"] = True
     try:
+        _ensure_fleet()
         path = pipeline.run(topic)
         rel = str(Path(path).relative_to(ROOT))
         JOBS[jid]["video"] = rel

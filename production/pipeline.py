@@ -9,8 +9,10 @@ Andy voice-change / toy TTS / closing VO (ElevenLabs + Gemini) -> ffmpeg composi
 """
 import sys
 import json
+import os
 import time
 import traceback
+import uuid
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
@@ -277,6 +279,17 @@ def run(topic: str):
         video_gen.free_all()  # LatentSync needs the GPU to itself
     finals = stage_audio_composite(script, clips)
     out = stage_stitch(script, finals, topic)
+    # Upload to S3 if configured; return presigned URL so remote callers get a playable link
+    bucket = os.environ.get("BONNIE_S3_BUCKET")
+    if bucket:
+        import boto3
+        s3 = boto3.client("s3")
+        key = f"videos/{topic.replace(' ', '_')}_{uuid.uuid4().hex[:8]}/final.mp4"
+        s3.upload_file(out, bucket, key, ExtraArgs={"ContentType": "video/mp4"})
+        url = s3.generate_presigned_url("get_object",
+            Params={"Bucket": bucket, "Key": key}, ExpiresIn=86400 * 7)
+        log(f"=== DONE -> {url} ===")
+        return url
     log(f"=== DONE -> {out} ===")
     return out
 

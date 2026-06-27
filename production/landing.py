@@ -358,14 +358,41 @@ def _video_job(jid, topic):
     if j.get("video_started"):
         return
     j["video_started"] = True
-    try:
-        _ensure_fleet()
-        _clear_pipeline_cache()
-        path = pipeline.run(topic)
-        rel = str(Path(path).relative_to(ROOT))
-        JOBS[jid]["video"] = rel
-    except Exception as e:
-        JOBS[jid]["video_err"] = str(e)[-300:]
+    pipeline_url = os.environ.get("BONNIE_PIPELINE_URL", "").rstrip("/")
+    if pipeline_url:
+        # Remote pipeline on EC2 — POST job then poll for completion
+        import requests as _req
+        secret = os.environ.get("BONNIE_PIPELINE_SECRET", "")
+        try:
+            _req.post(f"{pipeline_url}/generate",
+                      json={"jid": jid, "topic": topic, "secret": secret},
+                      timeout=15)
+        except Exception as e:
+            JOBS[jid]["video_err"] = f"pipeline dispatch failed: {e}"
+            return
+        while True:
+            try:
+                r = _req.get(f"{pipeline_url}/status/{jid}", timeout=15).json()
+            except Exception:
+                time.sleep(10)
+                continue
+            if r.get("status") == "done":
+                JOBS[jid]["video"] = r["video_url"]
+                return
+            if r.get("status") == "error":
+                JOBS[jid]["video_err"] = r.get("error", "pipeline error")[:300]
+                return
+            time.sleep(5)
+    else:
+        # Local fallback (dev / Render without pipeline URL set)
+        try:
+            _ensure_fleet()
+            _clear_pipeline_cache()
+            path = pipeline.run(topic)
+            rel = str(Path(path).relative_to(ROOT))
+            JOBS[jid]["video"] = rel
+        except Exception as e:
+            JOBS[jid]["video_err"] = str(e)[-300:]
 
 
 def _intro_job(jid, topic):
@@ -782,7 +809,9 @@ async function pollVideo(jid, topic){
   clearInterval(li); alert('This is taking a while — please refresh the page.'); show('idle');
 }
 function showVideo(url,topic){
-  $('heroVid').src=url+'?t='+Date.now(); $('dl').href=url;
+  // S3 presigned URLs already have query params — don't append cache-buster (corrupts signature)
+  var src=url.startsWith('http')?url:url+'?t='+Date.now();
+  $('heroVid').src=src; $('dl').href=url;
   $('vidTitle').textContent=(topic?('"'+topic+'" — '):'')+'delivered 🎬';
   show('video'); $('heroVid').play().catch(()=>{});
 }

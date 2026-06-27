@@ -20,7 +20,7 @@ LIPSYNC = os.environ.get("BONNIE_LIPSYNC", "overlay")
 
 ROOT = Path(__file__).parent
 ASSETS = ROOT / "assets"
-OUTPUT = ROOT / "output"
+OUTPUT = Path(os.environ.get("BONNIE_OUTPUT", str(ROOT / "output")))
 
 # ── Models / providers ──────────────────────────────────────────────────────
 GEMINI_TEXT_MODEL = "gemini-3.1-pro-preview"        # script writer (the "brain")

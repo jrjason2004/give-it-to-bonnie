@@ -160,12 +160,17 @@ def _audio_one(sc, script, clips):
         if a == "andy":
             veo_audio = str(OUT / f"raw_{sid}_veo_audio.wav")
             if Path(veo_audio).exists():
-                # Veo clip: STS voice-change preserves native timing (no offset needed)
-                aud = voice.andy_voice_change(veo_audio, str(OUT / f"{sid}_v.mp3"))
-                composite.replace_audio(work, aud, work2)
-                work = work2
+                try:
+                    aud = voice.andy_voice_change(veo_audio, str(OUT / f"{sid}_v.mp3"))
+                    composite.replace_audio(work, aud, work2)
+                    work = work2
+                except Exception as e:
+                    log(f"  ⚠ {sid} STS failed → TTS fallback ({str(e)[-80:]})")
+                    if line:
+                        aud = voice.andy_tts(line, str(OUT / f"{sid}_v.mp3"))
+                        composite.overlay_audio_at(work, aud, work2, start_s=start_s)
+                        work = work2
             elif line:
-                # Wan fallback: no native audio, overlay TTS at the configured offset
                 aud = voice.andy_tts(line, str(OUT / f"{sid}_v.mp3"))
                 composite.overlay_audio_at(work, aud, work2, start_s=start_s)
                 work = work2
@@ -188,14 +193,18 @@ def _audio_one(sc, script, clips):
             work = work2
     elif a == "tts":
         t = sc["tts"]
-        wav = voice.toy_tts(fill("{" + t["text_key"] + "}", script),
-                            fill("{" + t["style_key"] + "}", script), str(OUT / f"{sid}_toy.wav"))
-        base = str(OUT / f"{sid}_voice.mp4")
-        if t.get("at") == "end":
-            composite.overlay_audio_end(work, wav, base)
-        else:
-            composite.overlay_audio_at(work, wav, base, start_s=t.get("start_s", 0))
-        sfx = sc.get("sfx")   # e.g. scene7 pull-ring SFX at the start
+        try:
+            wav = voice.toy_tts(fill("{" + t["text_key"] + "}", script),
+                                fill("{" + t["style_key"] + "}", script), str(OUT / f"{sid}_toy.wav"))
+            base = str(OUT / f"{sid}_voice.mp4")
+            if t.get("at") == "end":
+                composite.overlay_audio_end(work, wav, base)
+            else:
+                composite.overlay_audio_at(work, wav, base, start_s=t.get("start_s", 0))
+        except Exception as e:
+            log(f"  ⚠ {sid} toy TTS failed → SFX-only fallback ({str(e)[-80:]})")
+            base = work  # skip toy voice, keep raw clip
+        sfx = sc.get("sfx")
         if sfx:
             work2 = str(OUT / f"{sid}_a.mp4")
             composite.mix_audio_at(base, str(config.ASSETS / sfx["file"]), work2,
@@ -227,11 +236,20 @@ def stage_audio_composite(script, clips, scenes=None):
     from concurrent.futures import as_completed
     nw = len(wan_lipsync.ENDPOINTS) if config.LIPSYNC == "wav2lip" else 6
     scene_finals = {}
+    sc_by_fut = {}
     with ThreadPoolExecutor(max_workers=max(2, min(len(scenes), nw))) as ex:
-        futs = [ex.submit(_audio_one, sc, script, clips) for sc in scenes]
-        for fut in as_completed(futs):
-            sid, path, reused = fut.result()
-            scene_finals[sid] = path; log(f"  {'↻ reuse' if reused else '✓'} {sid}")
+        for sc in scenes:
+            sc_by_fut[ex.submit(_audio_one, sc, script, clips)] = sc
+        for fut in as_completed(sc_by_fut):
+            sc = sc_by_fut[fut]
+            try:
+                sid, path, reused = fut.result()
+                scene_finals[sid] = path
+                log(f"  {'↻ reuse' if reused else '✓'} {sid}")
+            except Exception as e:
+                sid = sc["id"]
+                log(f"  ✗ {sid} audio failed → using raw clip ({str(e)[-120:]})")
+                scene_finals[sid] = clips[sid]  # fall back to silent raw clip
     return scene_finals
 
 

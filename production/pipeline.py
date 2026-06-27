@@ -210,7 +210,7 @@ def stage_audio_composite(script, clips, scenes=None):
     mode = {"wav2lip": "Wav2Lip lip-sync", "latentsync": "LatentSync lip-sync"}.get(config.LIPSYNC, "audio overlay")
     log(f"STAGE 3/4 — TTS + {mode} + per-scene composite (parallel)")
     from concurrent.futures import as_completed
-    nw = len(wan_lipsync.ENDPOINTS) if config.LIPSYNC == "wav2lip" else 6
+    nw = len(wan_lipsync.ENDPOINTS) if config.LIPSYNC == "wav2lip" else 2
     scene_finals = {}
     with ThreadPoolExecutor(max_workers=max(2, min(len(scenes), nw))) as ex:
         futs = [ex.submit(_audio_one, sc, script, clips) for sc in scenes]

@@ -43,7 +43,8 @@ _FLEET_IDS = [
 _FLEET_PORTS = [9001, 9002, 9003, 9004]   # local SSM tunnel -> box:8188
 _FLEET_REGION = "us-east-1"
 _fleet_lock = threading.Lock()
-_fleet_ready = False
+# If BONNIE_WAN_ENDPOINTS is already set (e.g. Render env var), skip auto-start entirely
+_fleet_ready = bool(os.environ.get("BONNIE_WAN_ENDPOINTS"))
 _fleet_procs = []   # SSM tunnel subprocesses
 
 

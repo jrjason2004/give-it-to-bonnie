@@ -759,27 +759,27 @@ async function pay(){
   }catch(e){ alert('Error: '+e); }
 }
 async function mockPay(){
-  $(‘player’).classList.add(‘hidden’);
+  $('player').classList.add('hidden');
   try{
-    const j=await (await fetch(‘/api/pay’,{method:’POST’,headers:{‘Content-Type’:’application/json’},body:JSON.stringify({jid:state.jid})})).json();
+    const j=await (await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid})})).json();
     if(j.generating){ pollVideo(state.jid, state.topic); }
-    else{ alert(‘Render failed: ‘+(j.error||’?’)); show(‘free’); }
-  }catch(e){ alert(‘Error: ‘+e); show(‘free’); }
+    else{ alert('Render failed: '+(j.error||'?')); show('free'); }
+  }catch(e){ alert('Error: '+e); show('free'); }
 }
 // poll until the background pipeline.run() finishes, then reveal the video
 async function pollVideo(jid, topic){
   closePlayer();
-  show(‘loading’);
-  rotate($(‘loadline’),["Andy’s lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie’s door…","Rolling the camera…","Adding the finishing touches…"]);
+  show('loading');
+  rotate($('loadline'),["Andy's lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie's door…","Rolling the camera…","Adding the finishing touches…"]);
   for(let i=0;i<600;i++){
     try{
-      const j=await (await fetch(‘/api/video_status?id=’+jid)).json();
+      const j=await (await fetch('/api/video_status?id='+jid)).json();
       if(j.video){ clearInterval(li); showVideo(j.video, topic); return; }
-      if(j.err){ clearInterval(li); alert(‘Video render failed: ‘+j.err); show(‘free’); return; }
+      if(j.err){ clearInterval(li); alert('Video render failed: '+j.err); show('free'); return; }
     }catch(e){}
     await new Promise(r=>setTimeout(r,3000));
   }
-  clearInterval(li); alert(‘This is taking a while — please refresh the page.’); show(‘idle’);
+  clearInterval(li); alert('This is taking a while — please refresh the page.'); show('idle');
 }
 function showVideo(url,topic){
   $('heroVid').src=url+'?t='+Date.now(); $('dl').href=url;

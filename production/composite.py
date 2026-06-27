@@ -19,15 +19,20 @@ def dur(path: str) -> float:
 
 
 def normalize(inp: str, out: str, muted=False):
-    """Standardize one clip to common codec/size/fps (+ silent track if muted/none)."""
+    """Standardize one clip to common codec/size/fps (+ silent track if muted/none).
+    Always pads audio to match video duration so the output is never truncated short."""
+    d = dur(inp)
     if muted:
         _run(["-i", inp, "-f", "lavfi", "-i", f"anullsrc=r={AR}:cl=mono",
               "-map", "0:v", "-map", "1:a", "-vf", f"scale={W}:{H},fps={FPS}",
               "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", str(AR),
-              "-shortest", out])
+              "-t", f"{d:.3f}", out])
     else:
-        _run(["-i", inp, "-vf", f"scale={W}:{H},fps={FPS}", "-c:v", "libx264",
-              "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", str(AR), out])
+        _run(["-i", inp,
+              "-filter_complex", f"[0:v]scale={W}:{H},fps={FPS}[v];[0:a]apad[a]",
+              "-map", "[v]", "-map", "[a]",
+              "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", str(AR),
+              "-t", f"{d:.3f}", out])
 
 
 def trim_tail(inp: str, out: str, secs: float):
@@ -38,9 +43,13 @@ def trim_tail(inp: str, out: str, secs: float):
 
 
 def replace_audio(video: str, audio: str, out: str):
-    """Swap the video's audio for `audio` (cut to video length)."""
-    _run(["-i", video, "-i", audio, "-map", "0:v", "-map", "1:a",
-          "-c:v", "copy", "-c:a", "aac", "-ar", str(AR), "-shortest", out])
+    """Swap the video's audio for `audio`. Audio is padded/trimmed to match the video — never clips video short."""
+    d = dur(video)
+    _run(["-i", video, "-i", audio,
+          "-filter_complex", "[1:a]apad[a]",
+          "-map", "0:v", "-map", "[a]",
+          "-c:v", "copy", "-c:a", "aac", "-ar", str(AR),
+          "-t", f"{d:.3f}", out])
 
 
 def mix(a: str, b: str, out: str, vol_a=1.0, vol_b=1.0):

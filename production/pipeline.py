@@ -35,6 +35,19 @@ def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
+def _audio_rms(path: str) -> float:
+    """Mean volume in dB (negative). Returns -99 on error or silence."""
+    r = subprocess.run(["ffmpeg", "-i", path, "-af", "volumedetect", "-f", "null", "/dev/null"],
+                       capture_output=True, text=True)
+    for line in r.stderr.splitlines():
+        if "mean_volume:" in line:
+            try:
+                return float(line.split("mean_volume:")[-1].strip().split()[0])
+            except ValueError:
+                pass
+    return -99.0
+
+
 class _Safe(dict):
     def __missing__(self, k):
         return ""
@@ -162,6 +175,9 @@ def _audio_one(sc, script, clips):
             if Path(veo_audio).exists():
                 try:
                     aud = voice.andy_voice_change(veo_audio, str(OUT / f"{sid}_v.mp3"))
+                    rms = _audio_rms(aud)
+                    if rms < -50:
+                        raise RuntimeError(f"STS near-silent ({rms:.0f} dB) — Veo had no speech")
                     composite.replace_audio(work, aud, work2)
                     work = work2
                 except Exception as e:

@@ -99,7 +99,8 @@ def _gen_clip(job):
     raw = out.replace(".mp4", "_vraw.mp4")
     try:
         _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
-        subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
+        # Veo Lite always returns 8s; trim to the target dur and strip audio in one pass
+        subprocess.run(["ffmpeg", "-y", "-i", raw, "-t", str(job["dur"]), "-an", "-c:v", "copy", out],
                        check=True, capture_output=True)
     except Exception as e:
         log(f"  ⚠ {job['id']} Veo failed ({str(e)[-120:]}) → Wan fallback")

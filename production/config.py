@@ -114,10 +114,10 @@ SCENES = [
          image=dict(inputs=["GiveBonnie_Scene4_Raw.png", "GiveBonnie_Scene1_Generated.jpg", "GiveBonnie_Scene3_Generated.jpg"],
                     prompt="Replace the toys on the ground with the {scene1_item}, and {scene3_items}. Sharpen animation quality.",
                     output="GiveBonnie_Scene4_Generated.jpg"),
-         video=dict(start="GiveBonnie_Scene4_Generated.jpg", end=None,
-                    prompt="The girl runs up and slowly peers down into the box looking inside, then at the very end cutely says “{scene4_line}”. 3D animation. Static shot.",
-                    dur=5, trim_end=0),
-         audio="bonnie", audio_start_s=3.6,  # quote lands at the END, after the box-reveal cutaway (silent while she runs up/looks)
+         video=dict(start=”GiveBonnie_Scene4_Generated.jpg”, end=None,
+                    prompt=”The girl runs up and slowly peers down into the box looking inside, then at the very end cutely says “{scene4_line}”. 3D animation. Static shot.”,
+                    dur=4, trim_end=0),
+         audio=”bonnie”, audio_start_s=3.0,  # quote lands at the END, after the box-reveal cutaway (silent while she runs up/looks)
          # 4.5 overlay: a separate image+video, cut to first 2s, placed over the middle 2s of scene4
          overlay=dict(
              image=dict(inputs=["GiveBonnie_Scene4.5_Raw.jpg"],

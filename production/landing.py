@@ -420,7 +420,7 @@ html,body{margin:0;min-height:100%;overflow-x:hidden;background:#7ec9f5}
 body{background:linear-gradient(180deg,#7ec9f5 0%,#7ec9f5 38%,#6aa636 100%)}
 input::placeholder{color:rgba(74,59,34,.4)}
 @keyframes pulseGlow{0%,100%{opacity:.9;transform:scale(1)}50%{opacity:1;transform:scale(1.06)}}
-@keyframes loadbar{0%{left:-45%}100%{left:105%}}
+@keyframes fillbar{0%{width:0%}100%{width:94%}}
 @keyframes popIn{0%{transform:scale(.94) translateY(16px);opacity:0}100%{transform:scale(1) translateY(0);opacity:1}}
 @keyframes hop{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-12px) rotate(4deg)}}
 @keyframes wobble{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(-2deg) scale(1.05)}}
@@ -510,7 +510,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .loadwrap{width:100%;max-width:430px;background:rgba(255,250,242,.96);border-radius:14px;padding:18px;box-shadow:inset 0 2px 6px rgba(0,0,0,.16)}
 .loadline{font-family:'Fredoka',sans-serif;font-weight:500;color:#4a3b22;font-size:18px;line-height:1.3;min-height:56px;display:flex;align-items:center}
 .bar{margin-top:6px;height:8px;background:rgba(138,85,38,.22);border-radius:6px;overflow:hidden;position:relative}
-.bar>div{position:absolute;top:0;bottom:0;width:42%;background:#FFC42E;border-radius:6px;animation:loadbar 1.4s ease-in-out infinite}
+.bar>div{position:absolute;top:0;left:0;bottom:0;width:0%;background:#FFC42E;border-radius:6px;animation:fillbar 600s linear forwards}
 .foot{position:relative;z-index:3;width:100%;text-align:center;padding:18px 0 max(14px,env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:#fff}
 .foot a{color:#fff;font-weight:800;text-decoration:none}
 .idlefoot{color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -797,7 +797,7 @@ async function mockPay(){
 async function pollVideo(jid, topic){
   closePlayer();
   show('loading');
-  rotate($('loadline'),["Andy's lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie's door…","Rolling the camera…","Adding the finishing touches…"]);
+  rotate($('loadline'),["Andy's lacing up his sneakers…","Wrapping it up real nice…","Bonnie has no idea what's coming…","The camera crew is setting up…","Making sure the bow is perfect…","Bonnie's on her way downstairs…","Andy's trying not to spoil it…","Double-checking the surprise…","Almost ready for the big reveal…","This one's going to be so good…","Bonnie's going to lose her mind…","The suspense is killing us too…"]);
   for(let i=0;i<600;i++){
     try{
       const j=await (await fetch('/api/video_status?id='+jid)).json();

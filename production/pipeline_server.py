@@ -56,6 +56,11 @@ def status(jid: str):
     return JOBS.get(jid, {"status": "not_found"})
 
 
+@app.get("/logs/{jid}")
+def logs(jid: str, lines: int = 50):
+    return {"log": _tail(LOGS / f"{jid}.log", lines)}
+
+
 def _run_job(jid: str, topic: str):
     out_dir = Path(f"/opt/bonnie/output/{jid}")
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -281,6 +281,7 @@ def start_free(topic):
         JOBS[jid] = {"image": None, "err": None, "intro": None, "intro_err": None, "topic": topic}
     threading.Thread(target=_photo_job, args=(jid, meta["pile"]), daemon=True).start()
     threading.Thread(target=_intro_job, args=(jid, topic), daemon=True).start()
+    threading.Thread(target=_ensure_fleet, daemon=True).start()   # warm the GPU fleet early
     central.report_stat("increment_project_generations")       # a "give" succeeded
     return {"jid": jid, "letter": meta["letter"], "pile": meta["pile"], "teaser": meta.get("teaser", "")}
 

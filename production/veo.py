@@ -43,7 +43,7 @@ def generate_video(prompt: str, image_path: str | None, out_path: str,
         inst["image"] = {"bytesBase64Encoded": b, "mimeType": mime}
     params = {"aspectRatio": aspect}
     if dur:
-        params["durationSeconds"] = int(round(dur))  # Veo 3.1 honors durationSeconds
+        params["durationSeconds"] = max(4, min(7, int(round(dur))))  # Lite: 4-7s safe range
     body = {"instances": [inst], "parameters": params}
     req = urllib.request.Request(f"{API}/models/{model}:predictLongRunning?key={key}",
                                  data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})

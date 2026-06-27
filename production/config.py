@@ -137,7 +137,7 @@ SCENES = [
          video=dict(start=”GiveBonnie_Scene5_Generated.jpg”, end=None,
                     prompt=”Guy lifts up his toy and says “{scene5_line}”. 3D animation. Static shot.”,
                     dur=4, trim_end=0),
-         audio=”andy”, audio_start_s=0.8),
+         audio=”andy”),
 
     dict(id="scene6", name="Bonnie's quote",
          image=dict(inputs=["GiveBonnie_Scene4_Generated.jpg", "GiveBonnie_Scene5_Generated.jpg"],

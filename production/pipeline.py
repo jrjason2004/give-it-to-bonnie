@@ -101,6 +101,10 @@ def _gen_clip(job):
         _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
         subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
                        check=True, capture_output=True)
+        # Preserve native audio for ElevenLabs STS in stage 3 (Andy voice-change)
+        subprocess.run(["ffmpeg", "-y", "-i", raw, "-vn", "-ac", "1", "-ar", "44100",
+                        out.replace(".mp4", "_veo_audio.wav")],
+                       check=True, capture_output=True)
     except Exception as e:
         log(f"  ⚠ {job['id']} Veo failed ({str(e)[-120:]}) → Wan fallback")
         video_gen.generate(job["prompt"], job["start"], out, dur_s=job["dur"])
@@ -152,21 +156,30 @@ def _audio_one(sc, script, clips):
     start_s = sc.get("audio_start_s", 0)  # delay the line to land later in the shot
     if a in ("andy", "bonnie"):
         line = script.get(f"{sid}_line", "")
-        if line:
-            aud = (voice.andy_tts(line, str(OUT / f"{sid}_v.mp3")) if a == "andy"
-                   else voice.bonnie_tts(line, str(OUT / f"{sid}_v.wav")))
-            work2 = str(OUT / f"{sid}_a.mp4")
-            # delayed line (e.g. scene4 quote after the box reveal) → overlay at the offset;
-            # lip-sync only makes sense for a line that starts at t=0.
+        work2 = str(OUT / f"{sid}_a.mp4")
+        if a == "andy":
+            veo_audio = str(OUT / f"raw_{sid}_veo_audio.wav")
+            if Path(veo_audio).exists():
+                # Veo clip: STS voice-change preserves native timing (no offset needed)
+                aud = voice.andy_voice_change(veo_audio, str(OUT / f"{sid}_v.mp3"))
+                composite.replace_audio(work, aud, work2)
+                work = work2
+            elif line:
+                # Wan fallback: no native audio, overlay TTS at the configured offset
+                aud = voice.andy_tts(line, str(OUT / f"{sid}_v.mp3"))
+                composite.overlay_audio_at(work, aud, work2, start_s=start_s)
+                work = work2
+        elif line:
+            aud = voice.bonnie_tts(line, str(OUT / f"{sid}_v.wav"))
             if start_s == 0 and config.LIPSYNC in ("wav2lip", "latentsync"):
-                box = sc.get("lipsync_crop")  # (x,y,w,h) fractions to isolate the speaker
+                box = sc.get("lipsync_crop")
                 try:
                     if box:
                         cr = str(OUT / f"{sid}_crop.mp4"); composite.crop_region(work, cr, *box)
                         crl = str(OUT / f"{sid}_crop_ls.mp4"); wan_lipsync.lipsync(cr, aud, crl)
                         composite.paste_region(work, crl, work2, box[0], box[1])
                     else:
-                        wan_lipsync.lipsync(work, aud, work2)    # mouth driven to the TTS
+                        wan_lipsync.lipsync(work, aud, work2)
                 except Exception as e:
                     log(f"  ⚠ {sid} lip-sync failed → overlay fallback ({str(e)[-90:]})")
                     composite.overlay_audio_at(work, aud, work2, start_s=0)

@@ -509,7 +509,9 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .pgsub{font-family:'Nunito',sans-serif;color:rgba(255,255,255,.82);font-size:14px;max-width:340px;line-height:1.45;margin-bottom:22px}
 .loadwrap{width:100%;max-width:430px;background:rgba(255,250,242,.96);border-radius:14px;padding:18px;box-shadow:inset 0 2px 6px rgba(0,0,0,.16)}
 .loadline{font-family:'Fredoka',sans-serif;font-weight:500;color:#4a3b22;font-size:18px;line-height:1.3;min-height:56px;display:flex;align-items:center}
-.bar{margin-top:6px;height:8px;background:rgba(138,85,38,.22);border-radius:6px;overflow:hidden;position:relative}
+.barlabel{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
+.barpct{font-family:'Fredoka',sans-serif;font-weight:600;color:#8a5526;font-size:13px}
+.bar{height:8px;background:rgba(138,85,38,.22);border-radius:6px;overflow:hidden;position:relative;flex:1;margin-right:8px}
 .bar>div{position:absolute;top:0;left:0;bottom:0;width:0%;background:#FFC42E;border-radius:6px;animation:fillbar 600s linear forwards}
 .foot{position:relative;z-index:3;width:100%;text-align:center;padding:18px 0 max(14px,env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:#fff}
 .foot a{color:#fff;font-weight:800;text-decoration:none}
@@ -551,7 +553,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
         <div class=titleTag><div>Give it to Bonnie</div></div>
         <div class=box>
           <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🎬</span>Putting your video together…</div>
-          <div class=loadwrap><div class=loadline id=loadline>Andy's heading over…</div><div class=bar><div></div></div></div>
+          <div class=loadwrap><div class=loadline id=loadline>Andy's heading over…</div><div class=barlabel><div class=bar><div id=barfill></div></div><span class=barpct id=barpct>0%</span></div></div>
         </div>
       </div>
     </div>
@@ -798,6 +800,11 @@ async function pollVideo(jid, topic){
   closePlayer();
   show('loading');
   rotate($('loadline'),["Andy's lacing up his sneakers…","Wrapping it up real nice…","Bonnie has no idea what's coming…","The camera crew is setting up…","Making sure the bow is perfect…","Bonnie's on her way downstairs…","Andy's trying not to spoil it…","Double-checking the surprise…","Almost ready for the big reveal…","This one's going to be so good…","Bonnie's going to lose her mind…","The suspense is killing us too…"]);
+  // restart bar animation and sync percentage counter
+  const fill=$('barfill'); fill.style.animation='none'; fill.offsetWidth; fill.style.animation='fillbar 600s linear forwards';
+  const pct=$('barpct'); let _pctStart=Date.now();
+  clearInterval(window._pctInt);
+  window._pctInt=setInterval(()=>{const p=Math.min(94,Math.round((Date.now()-_pctStart)/600000*94)); pct.textContent=p+'%';},1000);
   for(let i=0;i<600;i++){
     try{
       const j=await (await fetch('/api/video_status?id='+jid)).json();

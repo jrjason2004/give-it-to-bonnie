@@ -46,7 +46,10 @@ Never say "these two", and never a second "this is".
 excitedly calls the action-figure CHARACTER by the short kid-name she'd use for it — e.g. "My waiter!" \
 or "My quarterback!". It must be what a kid would call THAT character, NOT a food item or object.
 - action_figure: the PERSON/character central to the topic (becomes the toy). \
-action_figure_short: ONE lowercase plain noun for that character for image prompts (e.g. "waiter").
+action_figure_short: ONE lowercase generic job title or character type — NEVER a real person's name \
+or brand name (e.g. "chef" not "Gordon Ramsay", "mascot" not "Chihuahua", "quarterback" not "Patrick Mahomes"). \
+This field goes into video generation prompts where real names trigger content filters. \
+The character's actual name is still used in the spoken lines (scene4_line, scene5_line, etc.).
 - scene5_line: the guy lifts the toy, confused/fond: "[character]? What's he doing in here?"
 - scene6_line: the little girl points at the toy and cutely says the toy's CATCHPHRASE exactly ONCE \
 (do not repeat it).

@@ -42,9 +42,8 @@ def generate_video(prompt: str, image_path: str | None, out_path: str,
         mime = "image/png" if str(image_path).lower().endswith(".png") else "image/jpeg"
         inst["image"] = {"bytesBase64Encoded": b, "mimeType": mime}
     params = {"aspectRatio": aspect}
-    if dur:
-        # Veo 3.1 Lite only accepts discrete values: 4, 6, or 8 seconds
-        params["durationSeconds"] = next((v for v in (4, 6, 8) if v >= dur), 8)
+    # durationSeconds intentionally omitted — sending it causes Veo Lite ops to hang indefinitely
+    # (the op is accepted but never completes). Clip length is controlled via trim_end in config.
     body = {"instances": [inst], "parameters": params}
     req = urllib.request.Request(f"{API}/models/{model}:predictLongRunning?key={key}",
                                  data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})

@@ -42,6 +42,8 @@ def generate_video(prompt: str, image_path: str | None, out_path: str,
         mime = "image/png" if str(image_path).lower().endswith(".png") else "image/jpeg"
         inst["image"] = {"bytesBase64Encoded": b, "mimeType": mime}
     params = {"aspectRatio": aspect}
+    if dur is not None:
+        params["durationSeconds"] = int(dur)
     body = {"instances": [inst], "parameters": params}
     req = urllib.request.Request(f"{API}/models/{model}:predictLongRunning?key={key}",
                                  data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})

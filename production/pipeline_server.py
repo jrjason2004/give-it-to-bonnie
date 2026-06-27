@@ -21,6 +21,8 @@ LOGS = Path("/opt/bonnie/logs")
 LOGS.mkdir(parents=True, exist_ok=True)
 
 SECRET = os.environ.get("BONNIE_PIPELINE_SECRET", "")
+if not SECRET:
+    raise RuntimeError("BONNIE_PIPELINE_SECRET must be set — refusing to start without auth")
 BUCKET = os.environ.get("BONNIE_S3_BUCKET", "bonnie-video-output")
 MAX_WORKERS = int(os.environ.get("BONNIE_PIPELINE_WORKERS", "2"))
 

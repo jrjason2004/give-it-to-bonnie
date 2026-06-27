@@ -133,6 +133,30 @@ _pose_lock = threading.Lock()
 JOBS = {}
 _lock = threading.Lock()
 
+# ── IP-based rate limiting ────────────────────────────────────────────────────
+_rate: dict[str, list[float]] = {}          # ip -> list of recent request timestamps
+_rate_lock = threading.Lock()
+_FREE_LIMIT = 5      # max free generations per IP per window
+_FREE_WINDOW = 3600  # 1 hour
+
+
+def _rate_ok(ip: str) -> bool:
+    now = time.time()
+    with _rate_lock:
+        ts = _rate.get(ip, [])
+        ts = [t for t in ts if now - t < _FREE_WINDOW]
+        if len(ts) >= _FREE_LIMIT:
+            return False
+        ts.append(now)
+        _rate[ip] = ts
+    return True
+
+# ── Used PaymentIntents (prevents reuse for multiple videos) ─────────────────
+_used_pis: set[str] = set()
+_pi_lock = threading.Lock()
+
+TOPIC_MAX = 300   # characters
+
 _FREE_SCHEMA = {"type": "object", "required": ["pile", "letter"], "properties": {
     "pile": {"type": "string", "description": "what Bonnie is cradling in the photo — one or two of the "
              "topic's real items, named specifically with brands, optionally plus an action figure of a "
@@ -787,14 +811,7 @@ async function pay(){
     alert('Checkout error: '+(j.error||'?'));
   }catch(e){ alert('Error: '+e); }
 }
-async function mockPay(){
-  $('player').classList.add('hidden');
-  try{
-    const j=await (await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid})})).json();
-    if(j.generating){ pollVideo(state.jid, state.topic); }
-    else{ alert('Render failed: '+(j.error||'?')); show('free'); }
-  }catch(e){ alert('Error: '+e); show('free'); }
-}
+function mockPay(){ alert('Stripe is not configured — video unlocking unavailable.'); }
 // poll until the background pipeline.run() finishes, then reveal the video
 async function pollVideo(jid, topic){
   closePlayer();
@@ -969,7 +986,13 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", 0))
         d = json.loads(self.rfile.read(n)) if n else {}
         if self.path == "/api/free":
-            try: self._send(200, json.dumps(start_free(d.get("topic", "").strip())))
+            ip = self.headers.get("X-Forwarded-For", self.client_address[0]).split(",")[0].strip()
+            if not _rate_ok(ip):
+                self._send(200, json.dumps({"error": "Too many requests — try again later."})); return
+            topic = d.get("topic", "").strip()[:TOPIC_MAX]
+            if not topic:
+                self._send(200, json.dumps({"error": "No topic provided."})); return
+            try: self._send(200, json.dumps(start_free(topic)))
             except Exception as e: self._send(200, json.dumps({"error": str(e)[-200:]}))
         elif self.path == "/api/wall_add":
             try: wall_add(d.get("jid", ""), d.get("name", "")); self._send(200, json.dumps({"ok": True}))
@@ -999,8 +1022,14 @@ class H(BaseHTTPRequestHandler):
         elif self.path == "/api/paid_pi":
             # confirm a PaymentIntent (Apple/Google Pay) succeeded, then kick off the full render
             jid, pi = d.get("jid", ""), d.get("pi", "")
+            with _pi_lock:
+                already_used = pi in _used_pis
+            if already_used:
+                self._send(200, json.dumps({"error": "payment already redeemed"})); return
             try:
                 if stripe_pay.intent_paid(pi):
+                    with _pi_lock:
+                        _used_pis.add(pi)
                     topic = (JOBS.get(jid) or {}).get("topic", "")
                     threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
                     self._send(200, json.dumps({"generating": True, "topic": topic}))
@@ -1020,12 +1049,6 @@ class H(BaseHTTPRequestHandler):
                     self._send(200, json.dumps({"error": "payment not completed"}))
             except Exception as e:
                 self._send(200, json.dumps({"error": str(e)[-200:]}))
-        elif self.path == "/api/pay":
-            # dev fallback (no Stripe key): kick off the real render same as paid path
-            jid = d.get("jid", "")
-            topic = (JOBS.get(jid) or {}).get("topic", d.get("topic", ""))
-            threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
-            self._send(200, json.dumps({"generating": True, "topic": topic}))
         else:
             self._send(404, json.dumps({"error": "not found"}))
 

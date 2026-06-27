@@ -90,7 +90,7 @@ def _run_job(jid: str, topic: str):
         video_url = None
         for line in reversed(output):
             if "=== DONE ->" in line:
-                video_url = line.split("=== DONE ->")[-1].strip()
+                video_url = line.split("=== DONE ->")[-1].strip().rstrip("=").strip()
                 break
         if not video_url:
             raise RuntimeError("could not find output URL in pipeline log")

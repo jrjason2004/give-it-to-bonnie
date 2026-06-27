@@ -19,9 +19,12 @@ EL = "https://api.elevenlabs.io/v1"
 def _el_key():
     k = os.environ.get("ELEVENLABS_API_KEY")
     if not k:
-        for line in (Path(__file__).parent / ".env").read_text().splitlines():
+        env = Path(__file__).parent / ".env"
+        for line in env.read_text().splitlines() if env.exists() else []:
             if line.startswith("ELEVENLABS_API_KEY="):
                 k = line.split("=", 1)[1].strip()
+    if not k:
+        raise RuntimeError("ELEVENLABS_API_KEY not set")
     return k
 
 

@@ -95,7 +95,7 @@ def _gen_clip(job):
             overrides=job.get("overrides"))
     # All dialogue/action scenes → Veo 3.1 Lite (native lip-sync, audio stripped below)
     raw = out.replace(".mp4", "_vraw.mp4")
-    _veo.generate_video(job["prompt"], job["start"], raw)  # no durationSeconds — Lite rejects it
+    _veo.generate_video(job["prompt"], job["start"], raw, dur=job["dur"])
     subprocess.run(["ffmpeg", "-y", "-i", raw, "-an", "-c:v", "copy", out],
                    check=True, capture_output=True)
     return job["id"], out

@@ -28,6 +28,7 @@ import intro as intro_mod
 import supa
 import stripe_pay
 import central
+import pipeline
 
 ROOT = config.ROOT
 OUT = config.OUTPUT
@@ -246,6 +247,19 @@ def wall_list():
         try: return supa.fetch(16)
         except Exception as e: print("wall fetch supabase error:", str(e)[:200])
     return list(reversed(_load_wall()))[:16]
+
+
+def _video_job(jid, topic):
+    j = JOBS.setdefault(jid, {})
+    if j.get("video_started"):
+        return
+    j["video_started"] = True
+    try:
+        path = pipeline.run(topic)
+        rel = str(Path(path).relative_to(ROOT))
+        JOBS[jid]["video"] = rel
+    except Exception as e:
+        JOBS[jid]["video_err"] = str(e)[-300:]
 
 
 def _intro_job(jid, topic):
@@ -639,41 +653,43 @@ async function pay(){
   }catch(e){ alert('Error: '+e); }
 }
 async function mockPay(){
-  $('player').classList.add('hidden');
-  show('loading'); rotate($('loadline'),['Winding up the projector…','Carrying it across the yard…','Bonnie’s eyes go wide…']);
+  $(‘player’).classList.add(‘hidden’);
   try{
-    const j=await (await fetch('/api/pay',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:state.topic})})).json();
-    clearInterval(li);
-    if(!j.video){alert('Render failed: '+(j.error||'?'));show('free');return;}
-    clearInterval(li); deliverVideo(j.video, state.topic);
-  }catch(e){clearInterval(li);alert('Error: '+e);show('free');}
+    const j=await (await fetch(‘/api/pay’,{method:’POST’,headers:{‘Content-Type’:’application/json’},body:JSON.stringify({jid:state.jid})})).json();
+    if(j.generating){ pollVideo(state.jid, state.topic); }
+    else{ alert(‘Render failed: ‘+(j.error||’?’)); show(‘free’); }
+  }catch(e){ alert(‘Error: ‘+e); show(‘free’); }
 }
-// after payment: show a rendering loading state, THEN reveal the rest of their video
-async function deliverVideo(url,topic){
+// poll until the background pipeline.run() finishes, then reveal the video
+async function pollVideo(jid, topic){
   closePlayer();
-  show('loading');
-  rotate($('loadline'),["Andy's lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie's door…","Rolling the camera…","Adding the finishing touches…"]);
-  await new Promise(r=>setTimeout(r,9000));   // render time (mockup delivers the saved render)
-  clearInterval(li);
-  showVideo(url,topic);
+  show(‘loading’);
+  rotate($(‘loadline’),["Andy’s lacing up his sneakers…","Carrying it across the yard…","Knocking on Bonnie’s door…","Rolling the camera…","Adding the finishing touches…"]);
+  for(let i=0;i<600;i++){
+    try{
+      const j=await (await fetch(‘/api/video_status?id=’+jid)).json();
+      if(j.video){ clearInterval(li); showVideo(j.video, topic); return; }
+      if(j.err){ clearInterval(li); alert(‘Video render failed: ‘+j.err); show(‘free’); return; }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,3000));
+  }
+  clearInterval(li); alert(‘This is taking a while — please refresh the page.’); show(‘idle’);
 }
 function showVideo(url,topic){
   $('heroVid').src=url+'?t='+Date.now(); $('dl').href=url;
   $('vidTitle').textContent=(topic?('"'+topic+'" — '):'')+'delivered 🎬';
   show('video'); $('heroVid').play().catch(()=>{});
 }
-// returning from Stripe: confirm payment, then show the full video
+// returning from Stripe: confirm payment, then kick off and poll the full video render
 async function handleReturn(){
   const q=new URLSearchParams(location.search);
   if(q.get('paid')==='1' && q.get('sid')){
     history.replaceState({},'',location.pathname);
-    show('loading'); rotate($('loadline'),['Unwrapping your video…','Almost there…']);
     try{
       const j=await (await fetch('/api/paid',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:q.get('jid'),sid:q.get('sid')})})).json();
-      clearInterval(li);
-      if(j.video){ deliverVideo(j.video, j.topic); return; }
+      if(j.generating){ state.jid=q.get('jid'); pollVideo(q.get('jid'), j.topic); return; }
       alert('Could not confirm payment: '+(j.error||'?'));
-    }catch(e){ clearInterval(li); alert('Error: '+e); }
+    }catch(e){ alert('Error: '+e); }
     show('idle');
   }
 }
@@ -697,7 +713,7 @@ async function mountExpress(){
       if(error){ alert(error.message||'Payment failed'); return; }
       if(paymentIntent && paymentIntent.status==='succeeded'){
         const j=await (await fetch('/api/paid_pi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jid:state.jid,pi:paymentIntent.id})})).json();
-        if(j.video){ deliverVideo(j.video, j.topic); } else alert('Could not confirm payment: '+(j.error||'?'));
+        if(j.generating){ pollVideo(state.jid, j.topic); } else alert('Could not confirm payment: '+(j.error||'?'));
       }
     });
   }catch(e){ /* leave the fallback button */ }
@@ -733,6 +749,11 @@ class H(BaseHTTPRequestHandler):
             j = JOBS.get(jid) or {}
             self._send(200, json.dumps({"ready": bool(j.get("intro")), "url": j.get("intro"),
                                         "err": j.get("intro_err")})); return
+        if u.path == "/api/video_status":
+            jid = urllib.parse.parse_qs(u.query).get("id", [""])[0]
+            j = JOBS.get(jid) or {}
+            self._send(200, json.dumps({"done": bool(j.get("video")), "video": j.get("video"),
+                                        "err": j.get("video_err")})); return
         if u.path == "/api/wall":
             self._send(200, json.dumps({"entries": wall_list()})); return
         f = (ROOT / u.path.lstrip("/")).resolve()
@@ -812,30 +833,35 @@ class H(BaseHTTPRequestHandler):
             else:
                 self._send(200, json.dumps({}))      # no inline wallet — client uses the fallback
         elif self.path == "/api/paid_pi":
-            # confirm a PaymentIntent (Apple/Google Pay) succeeded, then hand back the full video
+            # confirm a PaymentIntent (Apple/Google Pay) succeeded, then kick off the full render
             jid, pi = d.get("jid", ""), d.get("pi", "")
             try:
                 if stripe_pay.intent_paid(pi):
                     topic = (JOBS.get(jid) or {}).get("topic", "")
-                    self._send(200, json.dumps({"video": PREVIEW, "topic": topic}))
+                    threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
+                    self._send(200, json.dumps({"generating": True, "topic": topic}))
                 else:
                     self._send(200, json.dumps({"error": "payment not completed"}))
             except Exception as e:
                 self._send(200, json.dumps({"error": str(e)[-200:]}))
         elif self.path == "/api/paid":
-            # confirm a Checkout Session is paid, then hand back the full video
+            # confirm a Checkout Session is paid, then kick off the full render
             jid, sid = d.get("jid", ""), d.get("sid", "")
             try:
                 if stripe_pay.is_paid(sid):
                     topic = (JOBS.get(jid) or {}).get("topic", "")
-                    self._send(200, json.dumps({"video": PREVIEW, "topic": topic}))
+                    threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
+                    self._send(200, json.dumps({"generating": True, "topic": topic}))
                 else:
                     self._send(200, json.dumps({"error": "payment not completed"}))
             except Exception as e:
                 self._send(200, json.dumps({"error": str(e)[-200:]}))
         elif self.path == "/api/pay":
-            # MOCKUP fallback (no Stripe key): deliver the saved sample render.
-            self._send(200, json.dumps({"video": PREVIEW}))
+            # dev fallback (no Stripe key): kick off the real render same as paid path
+            jid = d.get("jid", "")
+            topic = (JOBS.get(jid) or {}).get("topic", d.get("topic", ""))
+            threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
+            self._send(200, json.dumps({"generating": True, "topic": topic}))
         else:
             self._send(404, json.dumps({"error": "not found"}))
 

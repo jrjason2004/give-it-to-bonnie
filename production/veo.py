@@ -41,9 +41,9 @@ def generate_video(prompt: str, image_path: str | None, out_path: str,
         b = base64.standard_b64encode(Path(image_path).read_bytes()).decode()
         mime = "image/png" if str(image_path).lower().endswith(".png") else "image/jpeg"
         inst["image"] = {"bytesBase64Encoded": b, "mimeType": mime}
-    params = {"aspectRatio": aspect}
-    # durationSeconds intentionally omitted — sending it causes Veo Lite ops to hang indefinitely
-    # (the op is accepted but never completes). Clip length is controlled via trim_end in config.
+    params = {"aspectRatio": aspect, "resolution": "720p"}
+    # durationSeconds omitted — for i2v (single start frame) only 8s produces a video regardless;
+    # clips default to 8s and trim_end in config handles any excess.
     body = {"instances": [inst], "parameters": params}
     req = urllib.request.Request(f"{API}/models/{model}:predictLongRunning?key={key}",
                                  data=json.dumps(body).encode(), headers={"Content-Type": "application/json"})

@@ -87,7 +87,7 @@ SCENES = [
                     prompt="make this guy holding {scene1_item}, and sharpen the animation quality",
                     output="GiveBonnie_Scene1_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene1_Generated.jpg", end=None,
-                    prompt="Guy says “{scene1_line}” 3D animation. Static shot.",
+                    prompt='Guy says "{scene1_line}" 3D animation. Static shot.',
                     dur=4, trim_end=1),
          audio="andy",
          overlay=dict(clip="GiveBonnie_Scene1.5.mp4", at="middle", dur=1)),
@@ -97,7 +97,7 @@ SCENES = [
                     prompt="replace the cowgirl and horse toy with {scene1_item}, and sharpen the animation quality",
                     output="GiveBonnie_Scene2_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene2_Generated.jpg", end=None,
-                    prompt="Guy on the left says “{scene2_line}” as little girl runs over and grabs the {scene1_item}. 3D animation. Static shot.",
+                    prompt='Guy on the left says "{scene2_line}" as little girl runs over and grabs the {scene1_item}. 3D animation. Static shot.',
                     dur=4, trim_end=1),
          audio="andy"),
 
@@ -106,7 +106,7 @@ SCENES = [
                     prompt="Swap the rice flour and tapioca starch with {scene3_items}.",
                     output="GiveBonnie_Scene3_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene3_Generated.jpg", end=None,
-                    prompt="Guy faces forward and says “{scene3_line}”, holding the two items up and bringing them together. 3D animation. Static shot.",
+                    prompt='Guy faces forward and says "{scene3_line}", holding the two items up and bringing them together. 3D animation. Static shot.',
                     dur=8, trim_end=1),
          audio="andy"),
 
@@ -114,10 +114,10 @@ SCENES = [
          image=dict(inputs=["GiveBonnie_Scene4_Raw.png", "GiveBonnie_Scene1_Generated.jpg", "GiveBonnie_Scene3_Generated.jpg"],
                     prompt="Replace the toys on the ground with the {scene1_item}, and {scene3_items}. Sharpen animation quality.",
                     output="GiveBonnie_Scene4_Generated.jpg"),
-         video=dict(start=”GiveBonnie_Scene4_Generated.jpg”, end=None,
-                    prompt=”The girl runs up and slowly peers down into the box looking inside, then at the very end cutely says “{scene4_line}”. 3D animation. Static shot.”,
+         video=dict(start="GiveBonnie_Scene4_Generated.jpg", end=None,
+                    prompt='The girl runs up and slowly peers down into the box looking inside, then at the very end cutely says "{scene4_line}". 3D animation. Static shot.',
                     dur=4, trim_end=0),
-         audio=”bonnie”, audio_start_s=3.0,  # quote lands at the END, after the box-reveal cutaway (silent while she runs up/looks)
+         audio="bonnie", audio_start_s=3.0,  # quote lands at the END, after the box-reveal cutaway (silent while she runs up/looks)
          # 4.5 overlay: a separate image+video, cut to first 2s, placed over the middle 2s of scene4
          overlay=dict(
              image=dict(inputs=["GiveBonnie_Scene4.5_Raw.jpg"],
@@ -130,21 +130,21 @@ SCENES = [
                         dur=4, use_first_s=2),
              at="middle", dur=2)),
 
-    dict(id=”scene5”, name=”Andy's confusion”,
-         image=dict(inputs=[“GiveBonnie_Scene5_Raw.jpg”, “GiveBonnie_Scene4.5_Generated.jpg”],
-                    prompt=”replace the waiter toy with the {action_figure_short} toy in same style with a pull ring on its back.”,
-                    output=”GiveBonnie_Scene5_Generated.jpg”),
-         video=dict(start=”GiveBonnie_Scene5_Generated.jpg”, end=None,
-                    prompt=”Guy lifts up his toy and says “{scene5_line}”. 3D animation. Static shot.”,
+    dict(id="scene5", name="Andy's confusion",
+         image=dict(inputs=["GiveBonnie_Scene5_Raw.jpg", "GiveBonnie_Scene4.5_Generated.jpg"],
+                    prompt="replace the waiter toy with the {action_figure_short} toy in same style with a pull ring on its back.",
+                    output="GiveBonnie_Scene5_Generated.jpg"),
+         video=dict(start="GiveBonnie_Scene5_Generated.jpg", end=None,
+                    prompt='Guy lifts up his toy and says "{scene5_line}". 3D animation. Static shot.',
                     dur=4, trim_end=0),
-         audio=”andy”),
+         audio="andy"),
 
     dict(id="scene6", name="Bonnie's quote",
          image=dict(inputs=["GiveBonnie_Scene4_Generated.jpg", "GiveBonnie_Scene5_Generated.jpg"],
                     prompt="make the guy on the left holding the {action_figure_short} toy, and make the girl on the right excited pointing at it, while the guy is straight faced. Sharpen animation quality.",
                     output="GiveBonnie_Scene6_Generated.jpg"),
          video=dict(start="GiveBonnie_Scene6_Generated.jpg", end=None,
-                    prompt="The little girl on the right points and cutely says “{scene6_line}”, only her mouth moving as she speaks. The man on the left silently holds the {action_figure_short} toy, his mouth closed and still, not talking. 3D animation. Static shot.",
+                    prompt='The little girl on the right points and cutely says "{scene6_line}", only her mouth moving as she speaks. The man on the left silently holds the {action_figure_short} toy, his mouth closed and still, not talking. 3D animation. Static shot.',
                     dur=4, trim_end=1),
          audio="bonnie",  # Bonnie quotes the catchphrase ({scene6_line}); Gemini child voice
          # two people in frame — isolate Bonnie (right side) so lip-sync targets her, not the guy

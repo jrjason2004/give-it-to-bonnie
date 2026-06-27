@@ -21,11 +21,11 @@ _LORAS = {}  # base -> (high_lora_name, low_lora_name), resolved from each box's
 
 
 def _lora_names(base):
-    """Resolve this box's Lightning LoRA filenames (some boxes list a 'loras/' prefix)."""
+    """Resolve this box's Lightning LoRA filenames (setup script names them high_lightning/low_lightning)."""
     if base not in _LORAS:
         enum = _api(base, "/object_info/LoraLoaderModelOnly")["LoraLoaderModelOnly"]["input"]["required"]["lora_name"][0]
-        hi = next((x for x in enum if "lightning_high" in x), "wan22_i2v_lightning_high.safetensors")
-        lo = next((x for x in enum if "lightning_low" in x), "wan22_i2v_lightning_low.safetensors")
+        hi = next((x for x in enum if "high_lightning" in x), "wan22_i2v_high_lightning.safetensors")
+        lo = next((x for x in enum if "low_lightning" in x), "wan22_i2v_low_lightning.safetensors")
         _LORAS[base] = (hi, lo)
     return _LORAS[base]
 
@@ -101,8 +101,7 @@ def _workflow(image_name, prompt, w, h, length, seed, lora_hi, lora_lo, end_name
       "11": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["3", 0], "add_noise": "enable", "noise_seed": seed, "steps": p["steps"], "cfg": p["cfg"], "sampler_name": "euler", "scheduler": "simple", "positive": ["10", 0], "negative": ["10", 1], "latent_image": ["10", 2], "start_at_step": 0, "end_at_step": p["split"], "return_with_leftover_noise": "enable"}},
       "12": {"class_type": "KSamplerAdvanced", "inputs": {"model": ["4", 0], "add_noise": "disable", "noise_seed": seed, "steps": p["steps"], "cfg": p["cfg"], "sampler_name": "euler", "scheduler": "simple", "positive": ["10", 0], "negative": ["10", 1], "latent_image": ["11", 0], "start_at_step": p["split"], "end_at_step": p["steps"], "return_with_leftover_noise": "disable"}},
       "13": {"class_type": "VAEDecode", "inputs": {"samples": ["12", 0], "vae": ["6", 0]}},
-      "14": {"class_type": "CreateVideo", "inputs": {"images": ["13", 0], "fps": config.LTX_FPS}},
-      "15": {"class_type": "SaveVideo", "inputs": {"video": ["14", 0], "filename_prefix": "bonnie/clip", "format": "mp4", "codec": "h264"}},
+      "14": {"class_type": "VHS_VideoCombine", "inputs": {"images": ["13", 0], "frame_rate": config.LTX_FPS, "loop_count": 0, "filename_prefix": "bonnie/clip", "format": "video/h264-mp4", "pingpong": False, "save_output": True}},
     }
 
 

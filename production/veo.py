@@ -33,7 +33,7 @@ def _find_video(obj):
 
 
 def generate_video(prompt: str, image_path: str | None, out_path: str,
-                   model: str = MODEL, aspect: str = "16:9", timeout_s: int = 900,
+                   model: str = MODEL, aspect: str = "16:9", timeout_s: int = 180,
                    dur: float | None = None) -> str:
     key = gemini._key()
     inst = {"prompt": prompt}

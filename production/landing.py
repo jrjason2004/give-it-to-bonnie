@@ -151,9 +151,9 @@ def _rate_ok(ip: str) -> bool:
         _rate[ip] = ts
     return True
 
-# ── Used PaymentIntents (prevents reuse for multiple videos) ─────────────────
-_used_pis: set[str] = set()
-_pi_lock = threading.Lock()
+# ── Used payment tokens (prevents reuse of PI or session ID for multiple videos) ──
+_used_tokens: set[str] = set()
+_token_lock = threading.Lock()
 
 TOPIC_MAX = 300   # characters
 
@@ -937,11 +937,15 @@ class H(BaseHTTPRequestHandler):
                                         "err": j.get("video_err")})); return
         if u.path == "/api/wall":
             self._send(200, json.dumps({"entries": wall_list()})); return
-        f = (ROOT / u.path.lstrip("/")).resolve()
-        if str(f).startswith(str(ROOT.resolve())) and f.is_file():
-            ct = {".mp4": "video/mp4", ".jpg": "image/jpeg", ".png": "image/png",
-                  ".wav": "audio/wav", ".mp3": "audio/mpeg"}.get(f.suffix.lower(), "application/octet-stream")
-            self._serve_file(f, ct); return
+        # Only serve files from the two safe subdirs — never source/config/secrets
+        clean = u.path.lstrip("/")
+        if clean.startswith("assets/") or clean.startswith("output/"):
+            f = (ROOT / clean).resolve()
+            root_r = ROOT.resolve()
+            if str(f).startswith(str(root_r)) and f.is_file():
+                ct = {".mp4": "video/mp4", ".jpg": "image/jpeg", ".png": "image/png",
+                      ".wav": "audio/wav", ".mp3": "audio/mpeg"}.get(f.suffix.lower(), "application/octet-stream")
+                self._serve_file(f, ct); return
         self._send(404, json.dumps({"error": "not found"}))
 
     def _serve_file(self, f, ct):
@@ -1022,14 +1026,14 @@ class H(BaseHTTPRequestHandler):
         elif self.path == "/api/paid_pi":
             # confirm a PaymentIntent (Apple/Google Pay) succeeded, then kick off the full render
             jid, pi = d.get("jid", ""), d.get("pi", "")
-            with _pi_lock:
-                already_used = pi in _used_pis
+            with _token_lock:
+                already_used = pi in _used_tokens
             if already_used:
                 self._send(200, json.dumps({"error": "payment already redeemed"})); return
             try:
                 if stripe_pay.intent_paid(pi):
-                    with _pi_lock:
-                        _used_pis.add(pi)
+                    with _token_lock:
+                        _used_tokens.add(pi)
                     topic = (JOBS.get(jid) or {}).get("topic", "")
                     threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
                     self._send(200, json.dumps({"generating": True, "topic": topic}))
@@ -1040,8 +1044,14 @@ class H(BaseHTTPRequestHandler):
         elif self.path == "/api/paid":
             # confirm a Checkout Session is paid, then kick off the full render
             jid, sid = d.get("jid", ""), d.get("sid", "")
+            with _token_lock:
+                already_used = sid in _used_tokens
+            if already_used:
+                self._send(200, json.dumps({"error": "payment already redeemed"})); return
             try:
                 if stripe_pay.is_paid(sid):
+                    with _token_lock:
+                        _used_tokens.add(sid)
                     topic = (JOBS.get(jid) or {}).get("topic", "")
                     threading.Thread(target=_video_job, args=(jid, topic), daemon=True).start()
                     self._send(200, json.dumps({"generating": True, "topic": topic}))

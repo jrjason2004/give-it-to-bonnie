@@ -26,9 +26,12 @@ import video_gen
 import voice
 import composite
 import wan_lipsync
+import db
 
 OUT = config.OUTPUT
 OUT.mkdir(exist_ok=True)
+
+_RUN_ID = None  # set by run()/render_subset(); read by the per-scene generators below
 
 
 def log(msg):
@@ -68,7 +71,12 @@ def _gen_image(sid, spec, script):
     prompt = fill(spec["prompt"], script)
     out = str(OUT / spec["output"])
     log(f"  {sid}: {spec['output']}  <- {prompt[:70]}")
-    gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, out, grounding=True)
+    try:
+        gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, out, grounding=True)
+    except Exception as e:
+        db.log_prompt(_RUN_ID, sid, "image", prompt, model=config.GEMINI_IMAGE_MODEL, error=str(e)[:400])
+        raise
+    db.log_prompt(_RUN_ID, sid, "image", prompt, model=config.GEMINI_IMAGE_MODEL, output_path=out)
 
 
 def stage_images(script, scenes=None):
@@ -104,10 +112,12 @@ def _gen_clip(job):
     out = job["out"]
     # First-last-frame overlay (scene4_ov has end set) and closing muted scenes → Wan
     if job.get("end") or job["id"] in _WAN_SCENES:
-        return job["id"], video_gen.generate(
+        result = video_gen.generate(
             job["prompt"], job["start"], out,
             end_img=job.get("end"), dur_s=job["dur"],
             overrides=job.get("overrides"))
+        db.log_prompt(_RUN_ID, job["id"], "video", job["prompt"], model="wan", output_path=out)
+        return job["id"], result
     # All dialogue/action scenes → Veo 3.1 Lite; fall back to Wan if Veo is filtered/fails
     raw = out.replace(".mp4", "_vraw.mp4")
     try:
@@ -118,9 +128,12 @@ def _gen_clip(job):
         subprocess.run(["ffmpeg", "-y", "-i", raw, "-vn", "-ac", "1", "-ar", "44100",
                         out.replace(".mp4", "_veo_audio.wav")],
                        check=True, capture_output=True)
+        db.log_prompt(_RUN_ID, job["id"], "video", job["prompt"], model="veo-3.1-lite", output_path=out)
     except Exception as e:
         log(f"  ⚠ {job['id']} Veo failed ({str(e)[-120:]}) → Wan fallback")
+        db.log_prompt(_RUN_ID, job["id"], "video", job["prompt"], model="veo-3.1-lite", error=str(e)[:400])
         video_gen.generate(job["prompt"], job["start"], out, dur_s=job["dur"])
+        db.log_prompt(_RUN_ID, job["id"], "video", job["prompt"], model="wan", output_path=out)
     return job["id"], out
 
 
@@ -184,14 +197,17 @@ def _audio_one(sc, script, clips):
                     log(f"  ⚠ {sid} STS failed → TTS fallback ({str(e)[-80:]})")
                     if line:
                         aud = voice.andy_tts(line, str(OUT / f"{sid}_v.mp3"))
+                        db.log_prompt(_RUN_ID, sid, "audio", line, model="andy_tts", output_path=aud)
                         composite.overlay_audio_at(work, aud, work2, start_s=start_s)
                         work = work2
             elif line:
                 aud = voice.andy_tts(line, str(OUT / f"{sid}_v.mp3"))
+                db.log_prompt(_RUN_ID, sid, "audio", line, model="andy_tts", output_path=aud)
                 composite.overlay_audio_at(work, aud, work2, start_s=start_s)
                 work = work2
         elif line:
             aud = voice.bonnie_tts(line, str(OUT / f"{sid}_v.wav"))
+            db.log_prompt(_RUN_ID, sid, "audio", line, model="bonnie_tts", output_path=aud)
             if start_s == 0 and config.LIPSYNC in ("wav2lip", "latentsync"):
                 box = sc.get("lipsync_crop")
                 try:
@@ -210,8 +226,10 @@ def _audio_one(sc, script, clips):
     elif a == "tts":
         t = sc["tts"]
         try:
-            wav = voice.toy_tts(fill("{" + t["text_key"] + "}", script),
+            toy_text = fill("{" + t["text_key"] + "}", script)
+            wav = voice.toy_tts(toy_text,
                                 fill("{" + t["style_key"] + "}", script), str(OUT / f"{sid}_toy.wav"))
+            db.log_prompt(_RUN_ID, sid, "audio", toy_text, model="toy_tts", output_path=wav)
             base = str(OUT / f"{sid}_voice.mp4")
             if t.get("at") == "end":
                 composite.overlay_audio_end(work, wav, base)
@@ -274,6 +292,7 @@ def stage_stitch(script, scene_finals, topic):
     main = [scene_finals[s["id"]] for s in config.SCENES if s["id"] not in config.CLOSING_SEQUENCE]
     closing_clips = [scene_finals[s] for s in config.CLOSING_SEQUENCE]
     vo = voice.andy_tts(script["closing_voiceover"], str(OUT / "closing_vo.mp3"))
+    db.log_prompt(_RUN_ID, "closing", "audio", script["closing_voiceover"], model="andy_tts", output_path=vo)
     closing = str(OUT / "closing.mp4")
     composite.closing_vo(closing_clips, vo, closing)          # VO only — music is global now
     body = str(OUT / "_body.mp4")
@@ -300,14 +319,21 @@ def _load_or_write_script(topic):
 def render_subset(topic, scene_ids):
     """Render images+videos+audio for just `scene_ids` (reuses anything already on disk),
     returning (script, {sid: final_clip}). Used for the free chapter (scenes 1-2)."""
-    script = _load_or_write_script(topic)
-    scenes = [s for s in config.SCENES if s["id"] in scene_ids]
-    stage_images(script, scenes)
-    clips = stage_videos(script, scenes)
-    if config.LIPSYNC == "latentsync":
-        video_gen.free_all()
-    finals = stage_audio_composite(script, clips, scenes)
-    return script, finals
+    global _RUN_ID
+    _RUN_ID = db.start_run(f"{topic} (preview)")
+    try:
+        script = _load_or_write_script(topic)
+        scenes = [s for s in config.SCENES if s["id"] in scene_ids]
+        stage_images(script, scenes)
+        clips = stage_videos(script, scenes)
+        if config.LIPSYNC == "latentsync":
+            video_gen.free_all()
+        finals = stage_audio_composite(script, clips, scenes)
+        db.finish_run(_RUN_ID)
+        return script, finals
+    except Exception as e:
+        db.finish_run(_RUN_ID, status=f"error: {str(e)[:200]}")
+        raise
 
 
 def stitch_chapter(finals, scene_ids, out):
@@ -319,28 +345,36 @@ def stitch_chapter(finals, scene_ids, out):
 
 
 def run(topic: str):
+    global _RUN_ID
     log(f"=== GIVE IT TO BONNIE: '{topic}' ===")
-    script = _load_or_write_script(topic)
-    stage_images(script)
-    clips = stage_videos(script)
-    if config.LIPSYNC == "latentsync":
-        log("  freeing Wan VRAM on workers (two-phase LatentSync)…")
-        video_gen.free_all()  # LatentSync needs the GPU to itself
-    finals = stage_audio_composite(script, clips)
-    out = stage_stitch(script, finals, topic)
-    # Upload to S3 if configured; return presigned URL so remote callers get a playable link
-    bucket = os.environ.get("BONNIE_S3_BUCKET")
-    if bucket:
-        import boto3
-        s3 = boto3.client("s3")
-        key = f"videos/{topic.replace(' ', '_')}_{uuid.uuid4().hex[:8]}/final.mp4"
-        s3.upload_file(out, bucket, key, ExtraArgs={"ContentType": "video/mp4"})
-        url = s3.generate_presigned_url("get_object",
-            Params={"Bucket": bucket, "Key": key}, ExpiresIn=86400 * 7)
-        log(f"=== DONE -> {url} ===")
-        return url
-    log(f"=== DONE -> {out} ===")
-    return out
+    _RUN_ID = db.start_run(topic)
+    try:
+        script = _load_or_write_script(topic)
+        stage_images(script)
+        clips = stage_videos(script)
+        if config.LIPSYNC == "latentsync":
+            log("  freeing Wan VRAM on workers (two-phase LatentSync)…")
+            video_gen.free_all()  # LatentSync needs the GPU to itself
+        finals = stage_audio_composite(script, clips)
+        out = stage_stitch(script, finals, topic)
+        # Upload to S3 if configured; return presigned URL so remote callers get a playable link
+        bucket = os.environ.get("BONNIE_S3_BUCKET")
+        if bucket:
+            import boto3
+            s3 = boto3.client("s3")
+            key = f"videos/{topic.replace(' ', '_')}_{uuid.uuid4().hex[:8]}/final.mp4"
+            s3.upload_file(out, bucket, key, ExtraArgs={"ContentType": "video/mp4"})
+            url = s3.generate_presigned_url("get_object",
+                Params={"Bucket": bucket, "Key": key}, ExpiresIn=86400 * 7)
+            db.finish_run(_RUN_ID, final_path=url)
+            log(f"=== DONE -> {url} ===")
+            return url
+        db.finish_run(_RUN_ID, final_path=out)
+        log(f"=== DONE -> {out} ===")
+        return out
+    except Exception as e:
+        db.finish_run(_RUN_ID, status=f"error: {str(e)[:200]}")
+        raise
 
 
 if __name__ == "__main__":

@@ -141,6 +141,24 @@ def under_music(video: str, music: str, out: str, vol=0.28):
           "-map", "0:v", "-map", "[o]", "-c:v", "copy", "-c:a", "aac", "-ar", str(AR), out])
 
 
+def watermark(inp: str, out: str, text: str = "giveittobonnie.com"):
+    """Overlay a small white, half-opaque text watermark on the bottom-center of the video.
+    ffmpeg here has no libfreetype (drawtext unavailable), so the text is rendered to a
+    transparent PNG with PIL and composited with the `overlay` filter instead."""
+    from PIL import Image, ImageDraw, ImageFont
+    png = str(Path(out).parent / "_watermark.png")
+    font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
+    pad = 10
+    box = ImageDraw.Draw(Image.new("RGBA", (1, 1))).textbbox((0, 0), text, font=font)
+    w, h = box[2] - box[0] + pad * 2, box[3] - box[1] + pad * 2
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    ImageDraw.Draw(img).text((pad - box[0], pad - box[1]), text, font=font, fill=(255, 255, 255, 128))
+    img.save(png)
+    _run(["-i", inp, "-i", png, "-filter_complex",
+          "[0:v][1:v]overlay=(W-w)/2:H-h-24",
+          "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "copy", out])
+
+
 def concat(clips: list[str], out: str):
     """Concat clips, re-conditioning each segment in-graph so SAR/fps/tb all match."""
     n = len(clips)

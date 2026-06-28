@@ -278,8 +278,10 @@ def stage_stitch(script, scene_finals, topic):
     composite.closing_vo(closing_clips, vo, closing)          # VO only — music is global now
     body = str(OUT / "_body.mp4")
     composite.concat(main + [closing], body)
+    scored = str(OUT / "_scored.mp4")
+    composite.under_music(body, str(config.ASSETS / config.BG_MUSIC), scored)  # one bed, whole video
     final = str(OUT / f"final_{topic.replace(' ', '_')}.mp4")
-    composite.under_music(body, str(config.ASSETS / config.BG_MUSIC), final)  # one bed, whole video
+    composite.watermark(scored, final)
     return final
 
 

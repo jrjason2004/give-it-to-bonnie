@@ -39,7 +39,12 @@ def _post(model: str, body: dict, method: str = "generateContent", timeout=300) 
             with urllib.request.urlopen(req, timeout=timeout, context=_SSL) as r:
                 return json.loads(r.read())
         except urllib.error.HTTPError as e:
-            raise RuntimeError(f"Gemini {e.code}: {e.read().decode()[:600]}") from None
+            body_text = e.read().decode()[:600]
+            if e.code == 429:
+                last = f"Gemini 429 (rate limit): {body_text}"
+                time.sleep(10 * (attempt + 1))  # back off longer for rate limits
+                continue
+            raise RuntimeError(f"Gemini {e.code}: {body_text}") from None
         except (urllib.error.URLError, TimeoutError, socket.timeout) as e:
             last = e
             time.sleep(2 * (attempt + 1))  # transient network/timeout — retry with backoff

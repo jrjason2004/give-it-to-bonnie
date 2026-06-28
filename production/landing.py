@@ -285,8 +285,9 @@ def bonnie_photo(pile):
     out = OUT / f"{sid}.jpg"
     swap = ref[1].format(p=pile) if ref else f"A girl holding {pile}."
     prompt = f"{swap} Sharpen animation quality. Keep everything else the same."
-    # 512 + no high-thinking (grounding kept for brand accuracy) -> ~8s instead of ~33s; 1:1 polaroid
-    gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, str(out), grounding=True,
+    # grounding=False: googleSearch tool conflicts with responseModalities:["IMAGE"] — causes ~50%
+    # of requests to return a text grounding response (no image), failing after 3 retries.
+    gemini.generate_image(config.GEMINI_IMAGE_MODEL, prompt, inputs, str(out), grounding=False,
                           thinking_high=False, image_size="512", aspect="1:1")
     return "output/" + out.name
 
@@ -536,6 +537,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
 .barlabel{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
 .barpct{font-family:'Fredoka',sans-serif;font-weight:600;color:#8a5526;font-size:13px}
 .bar{height:8px;background:rgba(138,85,38,.22);border-radius:6px;overflow:hidden;position:relative;flex:1;margin-right:8px}
+.loadnote{margin-top:10px;font-family:'Fredoka',sans-serif;font-weight:500;color:#8a5526;font-size:12px;line-height:1.4;text-align:center;opacity:.8}
 .bar>div{position:absolute;top:0;left:0;bottom:0;width:0%;background:#FFC42E;border-radius:6px;animation:fillbar 600s linear forwards}
 .foot{position:relative;z-index:3;width:100%;text-align:center;padding:18px 0 max(14px,env(safe-area-inset-bottom));font-family:'Nunito',sans-serif;font-size:12px;color:#fff}
 .foot a{color:#fff;font-weight:800;text-decoration:none}
@@ -577,7 +579,7 @@ input::placeholder{color:rgba(74,59,34,.4)}
         <div class=titleTag><div>Give it to Bonnie</div></div>
         <div class=box>
           <div class=boxlbl><span style="font-size:24px;display:inline-block;animation:hop 1s ease-in-out infinite">🎬</span>Putting your video together…</div>
-          <div class=loadwrap><div class=loadline id=loadline>Andy's heading over…</div><div class=barlabel><div class=bar><div id=barfill></div></div><span class=barpct id=barpct>0%</span></div></div>
+          <div class=loadwrap><div class=loadline id=loadline>Andy's heading over…</div><div class=barlabel><div class=bar><div id=barfill></div></div><span class=barpct id=barpct>0%</span></div><div class=loadnote>Please wait 5-10 minutes. Feel free to leave the page, but do not close this tab.</div></div>
         </div>
       </div>
     </div>

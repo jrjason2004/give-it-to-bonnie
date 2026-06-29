@@ -8,7 +8,7 @@
     "video": "Guy pulls the {scene1_item} out of the box, brings it in front of him and says “{scene1_line}”."
   },
   "scene3": {
-    "video": "Guy looks at each item, holds them out in front of himself, then brings them close together",
+    "video": "Guy faces forward and says \"{scene3_line}\", holding the two items up and bringing them together. 3D animation. Static shot.",
     "image": "Swap the rice flour and tapioca starch with {scene3_items}."
   },
   "scene4": {

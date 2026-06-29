@@ -19,6 +19,8 @@ import config
 
 BUCKET = "wall"
 TABLE = "wall_entries"
+VIDEO_BUCKET = "videos"
+VIDEO_TABLE = "videos"
 
 
 def _creds():
@@ -52,6 +54,16 @@ def ensure_bucket():
     try:
         requests.post(f"{url}/storage/v1/bucket", headers=_h(key, {"Content-Type": "application/json"}),
                       json={"id": BUCKET, "name": BUCKET, "public": True}, timeout=20)
+    except Exception:
+        pass
+
+
+def ensure_video_bucket():
+    """Create the public 'videos' storage bucket if it doesn't exist (idempotent)."""
+    url, key = _creds()
+    try:
+        requests.post(f"{url}/storage/v1/bucket", headers=_h(key, {"Content-Type": "application/json"}),
+                      json={"id": VIDEO_BUCKET, "name": VIDEO_BUCKET, "public": True}, timeout=20)
     except Exception:
         pass
 
@@ -91,6 +103,37 @@ def fetch(limit=16):
     return out
 
 
+def upload_video(local_path, dest_name=None):
+    """Upload a local mp4 to the public 'videos' bucket, return its public URL."""
+    url, key = _creds()
+    p = Path(local_path)
+    dest = dest_name or p.name
+    r = requests.post(f"{url}/storage/v1/object/{VIDEO_BUCKET}/{dest}",
+                      headers=_h(key, {"Content-Type": "video/mp4", "x-upsert": "true"}),
+                      data=p.read_bytes(), timeout=300)
+    r.raise_for_status()
+    return f"{url}/storage/v1/object/public/{VIDEO_BUCKET}/{dest}"
+
+
+def insert_video(topic, video_url, run_id=None):
+    """Record a finished render in the 'videos' table so it's browsable later."""
+    url, key = _creds()
+    r = requests.post(f"{url}/rest/v1/{VIDEO_TABLE}",
+                      headers=_h(key, {"Content-Type": "application/json", "Prefer": "return=minimal"}),
+                      json={"topic": topic, "video_url": video_url, "run_id": run_id}, timeout=20)
+    r.raise_for_status()
+
+
+def fetch_videos(limit=50):
+    """Recent rendered videos, newest first, as [{topic, video_url, run_id, created_at}]."""
+    url, key = _creds()
+    r = requests.get(f"{url}/rest/v1/{VIDEO_TABLE}"
+                     f"?select=topic,video_url,run_id,created_at&order=created_at.desc&limit={limit}",
+                     headers=_h(key), timeout=20)
+    r.raise_for_status()
+    return r.json()
+
+
 SETUP_SQL = """\
 create table if not exists wall_entries (
   id bigint generated always as identity primary key,
@@ -102,13 +145,25 @@ create table if not exists wall_entries (
 alter table wall_entries enable row level security;
 drop policy if exists "wall public read" on wall_entries;
 create policy "wall public read" on wall_entries for select using (true);
+
+create table if not exists videos (
+  id bigint generated always as identity primary key,
+  topic text not null,
+  video_url text not null,
+  run_id bigint,
+  created_at timestamptz not null default now()
+);
+alter table videos enable row level security;
+drop policy if exists "videos public read" on videos;
+create policy "videos public read" on videos for select using (true);
 """
 
 if __name__ == "__main__":
     if not enabled():
         print("SUPABASE_URL / SUPABASE_SERVICE_KEY not set in .env — add them first.")
         sys.exit(1)
-    print("Creating storage bucket 'wall'…")
+    print("Creating storage buckets 'wall' + 'videos'…")
     ensure_bucket()
-    print("Bucket ready.\n\nRun this SQL once in the Supabase SQL editor:\n")
+    ensure_video_bucket()
+    print("Buckets ready.\n\nRun this SQL once in the Supabase SQL editor:\n")
     print(SETUP_SQL)

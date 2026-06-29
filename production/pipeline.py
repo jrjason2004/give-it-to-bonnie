@@ -27,6 +27,7 @@ import voice
 import composite
 import wan_lipsync
 import db
+import supa
 
 OUT = config.OUTPUT
 OUT.mkdir(exist_ok=True)
@@ -344,6 +345,36 @@ def stitch_chapter(finals, scene_ids, out):
     return out
 
 
+_GLOBAL_INTERMEDIATES = [
+    "closing_vo.mp3", "closing.mp4", "_body.mp4", "_scored.mp4",
+    "_closing_seq.mp4", "_closing_bed.m4a", "_watermark.png",
+]
+
+
+def _cleanup_intermediates(keep: str):
+    """Delete this run's per-scene working files (raw clips, voice swaps, crops, per-scene
+    finals) and the global stitch scratch files, now that the final video is uploaded to
+    S3/Supabase. `keep` (the final_<topic>.mp4 path) is left alone — local/dev delivery
+    still serves it straight off disk. Without this, output/ only ever grows (root cause
+    of the Render disk filling up)."""
+    keep_path = Path(keep).resolve()
+    patterns = [f"{sc['id']}_*" for sc in config.SCENES]
+    patterns += [f"raw_{sc['id']}*" for sc in config.SCENES]
+    patterns += [f"final_{sc['id']}.mp4" for sc in config.SCENES]
+    for pat in patterns:
+        for f in OUT.glob(pat):
+            if f.resolve() != keep_path:
+                try:
+                    f.unlink()
+                except OSError:
+                    pass
+    for name in _GLOBAL_INTERMEDIATES:
+        try:
+            (OUT / name).unlink()
+        except OSError:
+            pass
+
+
 def run(topic: str):
     global _RUN_ID
     log(f"=== GIVE IT TO BONNIE: '{topic}' ===")
@@ -357,6 +388,15 @@ def run(topic: str):
             video_gen.free_all()  # LatentSync needs the GPU to itself
         finals = stage_audio_composite(script, clips)
         out = stage_stitch(script, finals, topic)
+        # Mirror to Supabase Storage so finished videos are browsable later (best-effort, never blocks delivery)
+        if supa.enabled():
+            try:
+                dest = f"{topic.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.mp4"
+                video_url = supa.upload_video(out, dest)
+                supa.insert_video(topic, video_url, run_id=_RUN_ID)
+                log(f"  mirrored to Supabase -> {video_url}")
+            except Exception as e:
+                log(f"  ⚠ Supabase video upload failed: {str(e)[:200]}")
         # Upload to S3 if configured; return presigned URL so remote callers get a playable link
         bucket = os.environ.get("BONNIE_S3_BUCKET")
         if bucket:
@@ -367,9 +407,15 @@ def run(topic: str):
             url = s3.generate_presigned_url("get_object",
                 Params={"Bucket": bucket, "Key": key}, ExpiresIn=86400 * 7)
             db.finish_run(_RUN_ID, final_path=url)
+            _cleanup_intermediates(out)
+            try:
+                Path(out).unlink()  # already in S3 — landing.py serves the URL, not this path
+            except OSError:
+                pass
             log(f"=== DONE -> {url} ===")
             return url
         db.finish_run(_RUN_ID, final_path=out)
+        _cleanup_intermediates(out)
         log(f"=== DONE -> {out} ===")
         return out
     except Exception as e:

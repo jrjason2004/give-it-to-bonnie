@@ -39,8 +39,11 @@ most ~5 more words. Short. He has not finished his thought.
 the little girl grabbing the item, so keep his words minimal). It must read as the natural second half \
 of scene 1's sentence. Do NOT introduce new exclamations like "careful".
 - scene3_line: name BOTH items in this exact shape, using "this is" only ONCE: \
-"Now this is [X] and [Y]. You gotta keep them together because they're madly in love." \
-Never say "these two", and never a second "this is".
+"Now this is [X] and [Y]. You gotta keep them together because [cute, playful, NON-romantic reason \
+tied to what X and Y actually are]." Never say "these two", never a second "this is", and NEVER use \
+"madly in love" or any romantic framing — Veo's safety filter rejects romantic language paired with \
+certain items. Good reasons read like "they're the ultimate dynamic duo" or "they're best buds" — \
+playful teamwork/friendship, not romance.
 - scene3_items: the two items (X and Y), phrased to drop into an image swap.
 - scene4_line: the little girl peers over the box at the special toy and, in VERY few words (2-4), \
 excitedly calls the action-figure CHARACTER by the short kid-name she'd use for it — e.g. "My waiter!" \

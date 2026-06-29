@@ -11,6 +11,7 @@ No lip-sync; the word is mixed on top of the intro's own audio.
 """
 import sys
 import json
+import time
 from pathlib import Path
 
 import config
@@ -19,6 +20,7 @@ import voice
 import composite
 
 INTRO_SRC = config.ASSETS / "Bonnie_Intro.mp4"
+INTRO_TTL_S = 24 * 3600  # intros are cheap to regenerate; don't let them pile up on disk forever
 LINE_AT_S = 5.5   # when Andy's line starts in the intro
 INTRO_LINE = "someone told me you're really good with {word}"   # {word} = the topic swap-in
 # ElevenLabs Andy voice settings for the intro line (tuned for the intro specifically)
@@ -42,9 +44,23 @@ def intro_word(topic: str) -> str:
     return r["word"].strip().strip('.').strip()
 
 
+def sweep_stale_intros(ttl_s: float = INTRO_TTL_S):
+    """Delete intro_*.mp4 / intro_*_line.mp3 older than ttl_s — they're regenerated on
+    demand per topic and otherwise accumulate forever (one set per unique topic ever typed)."""
+    now = time.time()
+    for pat in ("intro_*.mp4", "intro_*_line.mp3"):
+        for f in config.OUTPUT.glob(pat):
+            try:
+                if now - f.stat().st_mtime > ttl_s:
+                    f.unlink()
+            except OSError:
+                pass
+
+
 def make_intro(topic: str, out: str | None = None, word: str | None = None) -> str:
     """Build the per-topic intro: Andy says the full line ("someone told me you're really good
     with {word}") starting at 5.5s over the intro clip; {word} is the topic swap-in."""
+    sweep_stale_intros()
     word = word or intro_word(topic)
     line = INTRO_LINE.format(word=word)
     safe = topic.replace(" ", "_")[:40]

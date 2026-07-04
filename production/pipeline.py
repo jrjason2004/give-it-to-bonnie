@@ -403,15 +403,6 @@ def run(topic: str):
             video_gen.free_all()  # LatentSync needs the GPU to itself
         finals = stage_audio_composite(script, clips)
         out = stage_stitch(script, finals, topic)
-        # Mirror to Supabase Storage so finished videos are browsable later (best-effort, never blocks delivery)
-        if supa.enabled():
-            try:
-                dest = f"{topic.replace(' ', '_')}_{uuid.uuid4().hex[:8]}.mp4"
-                video_url = supa.upload_video(out, dest)
-                supa.insert_video(topic, video_url, run_id=_RUN_ID)
-                log(f"  mirrored to Supabase -> {video_url}")
-            except Exception as e:
-                log(f"  ⚠ Supabase video upload failed: {str(e)[:200]}")
         # Upload to S3 if configured; return presigned URL so remote callers get a playable link
         bucket = os.environ.get("BONNIE_S3_BUCKET")
         if bucket:
@@ -422,6 +413,13 @@ def run(topic: str):
             url = s3.generate_presigned_url("get_object",
                 Params={"Bucket": bucket, "Key": key}, ExpiresIn=86400 * 7)
             db.finish_run(_RUN_ID, final_path=url)
+            # Record S3 URL in Supabase — skip re-uploading the video file (hits the 50MB storage limit)
+            if supa.enabled():
+                try:
+                    supa.insert_video(topic, url, run_id=_RUN_ID)
+                    log(f"  recorded in Supabase -> {url[:80]}…")
+                except Exception as e:
+                    log(f"  ⚠ Supabase insert failed: {str(e)[:200]}")
             _cleanup_intermediates(out)
             try:
                 Path(out).unlink()  # already in S3 — landing.py serves the URL, not this path

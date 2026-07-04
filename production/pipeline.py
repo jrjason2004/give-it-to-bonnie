@@ -375,9 +375,24 @@ def _cleanup_intermediates(keep: str):
             pass
 
 
+def _clear_run_cache():
+    """Wipe per-scene intermediates left by any previous run before starting a new one.
+    Prevents stale final_sceneN.mp4 / raw_sceneN.mp4 files from being silently reused."""
+    patterns = [f"{sc['id']}_*" for sc in config.SCENES]
+    patterns += [f"raw_{sc['id']}*" for sc in config.SCENES]
+    patterns += [f"final_{sc['id']}.mp4" for sc in config.SCENES]
+    for pat in patterns:
+        for f in OUT.glob(pat):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
 def run(topic: str):
     global _RUN_ID
     log(f"=== GIVE IT TO BONNIE: '{topic}' ===")
+    _clear_run_cache()
     _RUN_ID = db.start_run(topic)
     try:
         script = _load_or_write_script(topic)
